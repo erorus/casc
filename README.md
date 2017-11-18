@@ -33,6 +33,8 @@ Example:
 
 This was written in a Linux environment, though it should also function in Windows. Windows compatibility has not yet been tested.
 
+This requires at least PHP 7.0.
+
 ## Game Compatibility
 
 This was designed specifically to extract data for World of Warcraft. Parts of it may happen to be compatible with other Blizzard games, but they have not been tested.

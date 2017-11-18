@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "cb307df76874028156668347aa794f50",
-    "content-hash": "455c3e650748ef568ddd0fad5e08ec4a",
+    "hash": "6ee4baf060fc8496154ac61c280789de",
+    "content-hash": "207ce94bd063465c92d9119c49779189",
     "packages": [
         {
             "name": "erorus/db2",
@@ -54,6 +54,8 @@
     "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
+    "platform": {
+        "php": "^7.0"
+    },
     "platform-dev": []
 }
