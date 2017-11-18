@@ -1,0 +1,59 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
+        "This file is @generated automatically"
+    ],
+    "hash": "cb307df76874028156668347aa794f50",
+    "content-hash": "455c3e650748ef568ddd0fad5e08ec4a",
+    "packages": [
+        {
+            "name": "erorus/db2",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/erorus/db2.git",
+                "reference": "2254c1f92edfb25f11925eff98425b604e45fdb5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/erorus/db2/zipball/2254c1f92edfb25f11925eff98425b604e45fdb5",
+                "reference": "2254c1f92edfb25f11925eff98425b604e45fdb5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Erorus\\DB2\\": "src/Erorus/DB2/"
+                }
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Erorus",
+                    "email": "github@theunderminejournal.com"
+                }
+            ],
+            "description": "DB2 Reader for World of Warcraft data files",
+            "homepage": "https://github.com/erorus/db2",
+            "support": {
+                "source": "https://github.com/erorus/db2/tree/master",
+                "issues": "https://github.com/erorus/db2/issues"
+            },
+            "time": "2017-11-17 14:54:18"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": []
+}
