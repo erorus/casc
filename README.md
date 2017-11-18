@@ -41,6 +41,8 @@ This was designed specifically to extract data for World of Warcraft. Parts of i
 
 This tool is still in development, though most of the basic stuff is complete. It should be able to extract most files from both local and remote CASC sources.
 
+Command line options and default functionality may change in later versions.
+
 Major parts that are still unfinished or untested:
 * Encrypted files
 * Anything referenced in table B and the string block in Encoding
@@ -53,6 +55,8 @@ Features that are not planned to be supported:
 ## Disclaimer
 
 This work is neither endorsed by nor affiliated with Blizzard Entertainment.
+
+World of Warcraft, Warcraft, Battle.net and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
 
 ## Thanks
 
