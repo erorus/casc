@@ -15,7 +15,7 @@ Clone this repo, and run `composer install` to get the requirements.
 -f, --files    Required. Path of a text file listing the files to extract, one per line. 
 -o, --out      Required. Destination path for extracted files.
 
--w, --wow      Recommended. Path to World of Warcraft's install directory.
+-w, --wow      Recommended. Path to World of Warcraft's base directory.
 
 -c, --cache    Optional. Path for CASC's file cache. [default: $HOME/.casc-cache]
 -p, --program  Optional. The NGDP program code (wow, wow_beta, wowt). [default: wow] 
@@ -48,7 +48,6 @@ Command line options and default functionality may change in later versions.
 Major parts that are still unfinished or untested:
 * Encrypted files
 * Anything referenced in table B and the string block in Encoding
-* Support for the "Install" file list.
 
 Features that are not planned to be supported:
 * Patch archives (unnecessary since we aren't going to patch old files)

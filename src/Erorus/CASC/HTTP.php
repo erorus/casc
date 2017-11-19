@@ -94,7 +94,7 @@ class HTTP {
 
             $speed = static::$progress['progress'] / 1048576 / (microtime(true) - static::$progress['started']);
 
-            $line = sprintf("%.1fM / %.1fM - %d%% (%.2f MBps)\n", $pk, $tk, $pct, $speed);
+            $line = sprintf("%.1fM / %.1fM - %d%% (%.2f MBps)", $pk, $tk, $pct, $speed);
             fwrite(static::$writeProgressToStream, $line);
 
             return;

@@ -10,8 +10,8 @@ class CASC {
     /** @var Encoding */
     private $encoding;
 
-    /** @var Root */
-    private $root;
+    /** @var AbstractNameLookup[] */
+    private $nameSources = [];
 
     /** @var AbstractDataSource[] */
     private $dataSources = [];
@@ -41,30 +41,44 @@ class CASC {
         if (!isset($buildConfig->encoding[1])) {
             throw new \Exception("Could not find encoding value in build config\n");
         }
-
         if (!isset($buildConfig->root[0])) {
             throw new \Exception("Could not find root value in build config\n");
         }
+        if (!isset($buildConfig->install[0])) {
+            throw new \Exception("Could not find install value in build config\n");
+        }
 
-        echo "Loading encoding..\n";
+        echo "Loading encoding..";
         $this->encoding = new Encoding($this->cache, $cdnHost, $buildConfig->encoding[1]);
+        echo "\n";
+
+        echo "Loading install..";
+        $installHeader = $this->encoding->GetHeaderHash(hex2bin($buildConfig->install[0]));
+        if (!$installHeader) {
+            throw new \Exception("Could not find install header in Encoding\n");
+        }
+        $this->nameSources['Install'] = new Install($this->cache, $cdnHost, bin2hex($installHeader['headers'][0]));
+        echo "\n";
+
+        echo "Loading root..";
         $rootHeader = $this->encoding->GetHeaderHash(hex2bin($buildConfig->root[0]));
         if (!$rootHeader) {
             throw new \Exception("Could not find root header in Encoding\n");
         }
-
-        echo "Loading root..\n";
-        $this->root = new Root($this->cache, $cdnHost, bin2hex($rootHeader['headers'][0]), $locale);
+        $this->nameSources['Root'] = new Root($this->cache, $cdnHost, bin2hex($rootHeader['headers'][0]), $locale);
+        echo "\n";
 
         $cdnConfig = new Config($this->cache, $cdnHost, $ngdp->getCDNConfig());
 
         if ($wowPath) {
-            echo "Loading local indexes..\n";
+            echo "Loading local indexes..";
             $this->dataSources['Local'] = new Index($wowPath);
+            echo "\n";
         }
 
-        echo "Loading remote indexes..\n";
+        echo "Loading remote indexes..";
         $this->dataSources['Remote'] = new Archive($this->cache, $cdnHost, $cdnConfig->archives, $wowPath ? $wowPath : null);
+        echo "\n";
 
         $this->ready = true;
     }
@@ -81,7 +95,12 @@ class CASC {
         }
         $path .= str_replace('\\', DIRECTORY_SEPARATOR, $file);
 
-        $contentHash = $this->root->GetContentHash($file, $locale);
+        $contentHash = false;
+        foreach ($this->nameSources as $nameSourceName => $nameSource) {
+            if ($contentHash = $nameSource->GetContentHash($file, $locale)) {
+                break;
+            }
+        }
         if (!$contentHash) {
             return false;
         }

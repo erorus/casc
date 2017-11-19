@@ -2,7 +2,7 @@
 
 namespace Erorus\CASC;
 
-class Root
+class Root extends AbstractNameLookup
 {
     const LOCALE_FLAGS = [
         'enUS' => 0x2,
