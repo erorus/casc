@@ -204,6 +204,17 @@ class BLTE
                 // recursively encoded blte
                 return static::parseBLTE(substr($data, 1));
             case 'E':
+                $keyNameLength = ord(substr($data, 1, 1));
+                $keyName = substr($data, 2, $keyNameLength);
+                $ivLength = ord(substr($data, $keyNameLength + 2, 1));
+                $iv = substr($data, $keyNameLength + 3, $ivLength);
+                $type = substr($data, $keyNameLength + 3 + $ivLength, 1);
+
+                if (isset(static::$encryptionKeys[$keyName])) {
+                    if ($type == 'S') {
+                        return static::decryptSalsa(substr($data, $keyNameLength + $ivLength + 4), static::$encryptionKeys[$keyName], $iv);
+                    }
+                }
                 fwrite(STDERR, "Encrypted chunk, skipping!\n");
 
                 return '';
@@ -217,6 +228,11 @@ class BLTE
     public static function loadEncryptionKeys($keys) {
         foreach ($keys as $k => $v) {
             static::$encryptionKeys[$k] = $v;
+            echo sprintf("%s -> %s\n", bin2hex($k), bin2hex($v));
         }
+    }
+
+    private static function decryptSalsa($data, $key, $iv) {
+        return '';
     }
 }

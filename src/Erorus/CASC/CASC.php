@@ -147,7 +147,7 @@ class CASC {
         foreach ($db2s['tactKeyLookup']->generateRecords() as $id => $lookupRec) {
             $keyRec = $db2s['tactKey']->getRecord($id);
             if ($keyRec) {
-                $keys[static::byteArrayToString(array_reverse($lookupRec[0]))] = static::byteArrayToString($keyRec[0]);
+                $keys[static::byteArrayToString($lookupRec[0])] = static::byteArrayToString($keyRec[0]);
             }
         }
 
