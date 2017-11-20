@@ -2,6 +2,8 @@
 
 namespace Erorus\CASC;
 
+use Erorus\DB2\Reader;
+
 class CASC {
     
     /** @var Cache */
@@ -81,6 +83,8 @@ class CASC {
         echo "\n";
 
         $this->ready = true;
+
+        $this->getTactKey();
     }
 
     public function fetchFile($file, $destRoot, $locale = null) {
@@ -105,10 +109,64 @@ class CASC {
             return false;
         }
 
-        //echo sprintf("Searching for content %s in encoding\n", bin2hex($contentHash));
+        return $this->fetchContentHash($contentHash, $path);
+    }
+
+    private function getTactKey() {
+        echo "Loading encryption keys..";
+
+        $files = [
+            'tactKey' => 'DBFilesClient\\TactKey.db2',
+            'tactKeyLookup' => 'DBFilesClient\\TactKeyLookup.db2',
+        ];
+
+        /** @var Reader[] $db2s */
+        $db2s = [];
+
+        foreach ($files as $id => $path) {
+            $contentHash = $this->nameSources['Root']->GetContentHash($path, null);
+            if (!$contentHash) {
+                echo " Failed\n";
+                return false;
+            }
+
+            $cachePath = 'keys/' . bin2hex($contentHash);
+            $fullCachePath = $this->cache->getFullPath($cachePath);
+            if (!$this->cache->fileExists($cachePath)) {
+                $success = $this->fetchContentHash($contentHash, $fullCachePath);
+                if (!$success) {
+                    echo " Failed\n";
+                    return false;
+                }
+            }
+
+            $db2s[$id] = new Reader($fullCachePath);
+        }
+
+        $keys = [];
+        foreach ($db2s['tactKeyLookup']->generateRecords() as $id => $lookupRec) {
+            $keyRec = $db2s['tactKey']->getRecord($id);
+            if ($keyRec) {
+                $keys[static::byteArrayToString(array_reverse($lookupRec[0]))] = static::byteArrayToString($keyRec[0]);
+            }
+        }
+
+        BLTE::loadEncryptionKeys($keys);
+
+        echo sprintf(" OK (%d)\n", count($keys));
+    }
+
+    private static function byteArrayToString($bytes) {
+        $str = '';
+        for ($x = 0; $x < count($bytes); $x++) {
+            $str .= chr($bytes[$x]);
+        }
+        return $str;
+    }
+
+    private function fetchContentHash($contentHash, $destPath) {
         $headerHashes = $this->encoding->GetHeaderHash($contentHash);
         if (!$headerHashes) {
-            //echo "Header hash for content ", bin2hex($contentHash), " not found\n";
             return false;
         }
 
@@ -116,7 +174,7 @@ class CASC {
             foreach ($headerHashes['headers'] as $hash) {
                 try {
                     if ($location = $dataSource->findHashInIndexes($hash)) {
-                        if ($dataSource->extractFile($location, $path, $contentHash)) {
+                        if ($dataSource->extractFile($location, $destPath, $contentHash)) {
                             return $dataSourceName;
                         }
                     }

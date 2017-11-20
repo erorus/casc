@@ -17,6 +17,7 @@ class BLTE
     private $chunkInfo = [];
     private $chunkIndex = 0;
 
+    private static $encryptionKeys = [];
 
     public function stream_open($path, $mode, $options, $opened_path) {
         $this->reportErrors = !!($options & STREAM_REPORT_ERRORS);
@@ -210,6 +211,12 @@ class BLTE
                 fwrite(STDERR, sprintf("Unknown chunk type %s, skipping!\n", substr($data, 0, 1)));
 
                 return '';
+        }
+    }
+
+    public static function loadEncryptionKeys($keys) {
+        foreach ($keys as $k => $v) {
+            static::$encryptionKeys[$k] = $v;
         }
     }
 }
