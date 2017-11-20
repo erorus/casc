@@ -14,7 +14,7 @@ class Install extends AbstractNameLookup
         if ($f === false) {
             $f = $cache->getWriteHandle($cachePath, true);
             if ($f === false) {
-                throw new \Exception("Cannot create temp buffer for install data\n");
+                throw new \Exception("Cannot create cache location for install data\n");
             }
 
             $url = sprintf('%sdata/%s/%s/%s', $hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
