@@ -13,14 +13,18 @@ class Root extends AbstractNameLookup
         'esES' => 0x80,
         'zhTW' => 0x100,
         'enGB' => 0x200,
-        'enCN' => 0x400,
-        'enTW' => 0x800,
+        //'enCN' => 0x400,
+        //'enTW' => 0x800,
         'esMX' => 0x1000,
         'ruRU' => 0x2000,
         'ptBR' => 0x4000,
         'itIT' => 0x8000,
         'ptPT' => 0x10000,
+
+        //'All'  => 0x1F3F6,
     ];
+
+    const CHUNK_RECORD_COUNT = 8192;
 
     private $defaultLocale = '';
 
@@ -91,16 +95,20 @@ class Root extends AbstractNameLookup
                 $fileDataIds = [];
                 $records = [];
 
-                $deltas = array_values(unpack('i*', fread($this->fileHandle, 4 * $numRec)));
+                $deltas = \SplFixedArray::fromArray(unpack('i*', fread($this->fileHandle, 4 * $numRec)), false);
                 $prevId = -1;
-                for ($x = 0; $x < $numRec; $x++) {
-                    $contentKey = fread($this->fileHandle, 16);
-                    $nameHash = fread($this->fileHandle, 8);
 
-                    $prevId = $fileDataId = $deltas[$x] + $prevId + 1;
+                for ($chunkOffset = 0; $chunkOffset < $numRec; $chunkOffset += $chunkSize) {
+                    $chunkSize = min(static::CHUNK_RECORD_COUNT, $numRec - $chunkOffset);
 
-                    $fileDataIds[$fileDataId] = $nameHash;
-                    $records[$nameHash] = $contentKey;
+                    $data = \SplFixedArray::fromArray(str_split(fread($this->fileHandle, 24 * $chunkSize), 24), false);
+                    for ($pos = 0; $pos < $chunkSize; $pos++) {
+                        list($contentKey, $nameHash) = str_split($data[$pos], 16);
+
+                        $fileDataIds[$prevId = $deltas[$chunkOffset + $pos] + $prevId + 1] = $nameHash;
+                        $records[$nameHash] = $contentKey;
+                    }
+                    unset($data);
                 }
                 unset($deltas);
                 $this->blockCache[$blockId] = [$fileDataIds, $records];
