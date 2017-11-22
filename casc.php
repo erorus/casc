@@ -3,7 +3,6 @@
 require_once __DIR__ . '/vendor/autoload.php';
 
 use \Erorus\CASC;
-use \Erorus\DB2;
 
 function getHomeDir() {
     $home = getenv('HOME');

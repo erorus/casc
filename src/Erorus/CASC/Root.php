@@ -132,34 +132,30 @@ class Root extends AbstractNameLookup
     }
 
     public static function jenkins_hashlittle2($txt) {
-        $Crop = function($x) {
-            return current(unpack('L', pack('L', $x)));
+        $Rot = function($x,$k) {
+            return 0xFFFFFFFF & ((($x)<<($k)) | (($x)>>(32-($k))));
         };
 
-        $Rot = function($x,$k) use ($Crop) {
-            return $Crop((($x)<<($k)) | (($x)>>(32-($k))));
+        $Mix = function(&$a,&$b,&$c) use ($Rot) {
+            $a = 0xFFFFFFFF & ($a - $c);  $a ^= $Rot($c, 4);  $c = 0xFFFFFFFF & ($c + $b);
+            $b = 0xFFFFFFFF & ($b - $a);  $b ^= $Rot($a, 6);  $a = 0xFFFFFFFF & ($a + $c);
+            $c = 0xFFFFFFFF & ($c - $b);  $c ^= $Rot($b, 8);  $b = 0xFFFFFFFF & ($b + $a);
+            $a = 0xFFFFFFFF & ($a - $c);  $a ^= $Rot($c,16);  $c = 0xFFFFFFFF & ($c + $b);
+            $b = 0xFFFFFFFF & ($b - $a);  $b ^= $Rot($a,19);  $a = 0xFFFFFFFF & ($a + $c);
+            $c = 0xFFFFFFFF & ($c - $b);  $c ^= $Rot($b, 4);  $b = 0xFFFFFFFF & ($b + $a);
         };
 
-        $Mix = function(&$a,&$b,&$c) use ($Rot, $Crop) {
-            $a = $Crop($a - $c);  $a ^= $Rot($c, 4);  $c = $Crop($c + $b);
-            $b = $Crop($b - $a);  $b ^= $Rot($a, 6);  $a = $Crop($a + $c);
-            $c = $Crop($c - $b);  $c ^= $Rot($b, 8);  $b = $Crop($b + $a);
-            $a = $Crop($a - $c);  $a ^= $Rot($c,16);  $c = $Crop($c + $b);
-            $b = $Crop($b - $a);  $b ^= $Rot($a,19);  $a = $Crop($a + $c);
-            $c = $Crop($c - $b);  $c ^= $Rot($b, 4);  $b = $Crop($b + $a);
+        $Final = function(&$a,&$b,&$c) use ($Rot) {
+            $c ^= $b; $c = 0xFFFFFFFF & ($c - $Rot($b,14));
+            $a ^= $c; $a = 0xFFFFFFFF & ($a - $Rot($c,11));
+            $b ^= $a; $b = 0xFFFFFFFF & ($b - $Rot($a,25));
+            $c ^= $b; $c = 0xFFFFFFFF & ($c - $Rot($b,16));
+            $a ^= $c; $a = 0xFFFFFFFF & ($a - $Rot($c,4));
+            $b ^= $a; $b = 0xFFFFFFFF & ($b - $Rot($a,14));
+            $c ^= $b; $c = 0xFFFFFFFF & ($c - $Rot($b,24));
         };
 
-        $Final = function(&$a,&$b,&$c) use ($Rot, $Crop) {
-            $c ^= $b; $c = $Crop($c - $Rot($b,14));
-            $a ^= $c; $a = $Crop($a - $Rot($c,11));
-            $b ^= $a; $b = $Crop($b - $Rot($a,25));
-            $c ^= $b; $c = $Crop($c - $Rot($b,16));
-            $a ^= $c; $a = $Crop($a - $Rot($c,4));
-            $b ^= $a; $b = $Crop($b - $Rot($a,14));
-            $c ^= $b; $c = $Crop($c - $Rot($b,24));
-        };
-
-        $Ret = function($c, $b) use ($Crop) {
+        $Ret = function($c, $b) {
             $c = dechex($c);
             $b = dechex($b);
             return implode('', array_reverse(str_split(hex2bin(str_pad($c, 8, '0', STR_PAD_LEFT) . str_pad($b, 8, '0', STR_PAD_LEFT)))));
@@ -170,9 +166,13 @@ class Root extends AbstractNameLookup
         $pos = 0;
         $length = strlen($txt);
         while ($length > 12) {
-            $a = $Crop($a + current(unpack('L', substr($txt, $pos, 4)))); $pos += 4;
-            $b = $Crop($b + current(unpack('L', substr($txt, $pos, 4)))); $pos += 4;
-            $c = $Crop($c + current(unpack('L', substr($txt, $pos, 4)))); $pos += 4;
+            $vals = unpack('V*', substr($txt, $pos, 12));
+            $pos += 12;
+
+            $a = 0xFFFFFFFF & ($a + $vals[1]);
+            $b = 0xFFFFFFFF & ($b + $vals[2]);
+            $c = 0xFFFFFFFF & ($c + $vals[3]);
+
             $Mix($a,$b,$c);
             $length -= 12;
         }
@@ -186,18 +186,18 @@ class Root extends AbstractNameLookup
 
         switch($length)
         {
-            case 12: $c=$Crop($c+$k[2]); $b=$Crop($b+$k[1]); $a=$Crop($a+$k[0]); break;
-            case 11: $c=$Crop($c+($k[2]&0xffffff)); $b=$Crop($b+$k[1]); $a=$Crop($a+$k[0]); break;
-            case 10: $c=$Crop($c+($k[2]&0xffff)); $b=$Crop($b+$k[1]); $a=$Crop($a+$k[0]); break;
-            case 9 : $c=$Crop($c+($k[2]&0xff)); $b=$Crop($b+$k[1]); $a=$Crop($a+$k[0]); break;
-            case 8 : $b=$Crop($b+$k[1]); $a=$Crop($a+$k[0]); break;
-            case 7 : $b=$Crop($b+($k[1]&0xffffff)); $a=$Crop($a+$k[0]); break;
-            case 6 : $b=$Crop($b+($k[1]&0xffff)); $a=$Crop($a+$k[0]); break;
-            case 5 : $b=$Crop($b+($k[1]&0xff)); $a=$Crop($a+$k[0]); break;
-            case 4 : $a=$Crop($a+$k[0]); break;
-            case 3 : $a=$Crop($a+($k[0]&0xffffff)); break;
-            case 2 : $a=$Crop($a+($k[0]&0xffff)); break;
-            case 1 : $a=$Crop($a+($k[0]&0xff)); break;
+            case 12: $c=0xFFFFFFFF & ($c+$k[2]); $b=0xFFFFFFFF & ($b+$k[1]); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 11: $c=0xFFFFFFFF & ($c+($k[2]&0xffffff)); $b=0xFFFFFFFF & ($b+$k[1]); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 10: $c=0xFFFFFFFF & ($c+($k[2]&0xffff)); $b=0xFFFFFFFF & ($b+$k[1]); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 9 : $c=0xFFFFFFFF & ($c+($k[2]&0xff)); $b=0xFFFFFFFF & ($b+$k[1]); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 8 : $b=0xFFFFFFFF & ($b+$k[1]); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 7 : $b=0xFFFFFFFF & ($b+($k[1]&0xffffff)); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 6 : $b=0xFFFFFFFF & ($b+($k[1]&0xffff)); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 5 : $b=0xFFFFFFFF & ($b+($k[1]&0xff)); $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 4 : $a=0xFFFFFFFF & ($a+$k[0]); break;
+            case 3 : $a=0xFFFFFFFF & ($a+($k[0]&0xffffff)); break;
+            case 2 : $a=0xFFFFFFFF & ($a+($k[0]&0xffff)); break;
+            case 1 : $a=0xFFFFFFFF & ($a+($k[0]&0xff)); break;
             case 0 : return $Ret($c,$b);  /* zero length strings require no mixing */
         }
 

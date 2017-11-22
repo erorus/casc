@@ -21,6 +21,9 @@ class CASC {
     private $ready = false;
     
     public function __construct($cachePath, $wowPath, $program = 'wow', $region = 'us', $locale = 'enUS') {
+        if (PHP_INT_MAX < 8589934590) {
+            throw new \Exception("Requires 64-bit PHP");
+        }
         if (!in_array('blte', stream_get_wrappers())) {
             stream_wrapper_register('blte', BLTE::class);
         }
@@ -84,7 +87,18 @@ class CASC {
 
         $this->ready = true;
 
-        $this->getTactKey();
+        BLTE::loadEncryptionKeys(); // init static keys
+        $this->fetchTactKey();
+    }
+
+    public function getContentHash($file, $locale = null) {
+        $contentHash = false;
+        foreach ($this->nameSources as $nameSourceName => $nameSource) {
+            if ($contentHash = $nameSource->GetContentHash($file, $locale)) {
+                break;
+            }
+        }
+        return $contentHash;
     }
 
     public function fetchFile($file, $destRoot, $locale = null) {
@@ -99,20 +113,17 @@ class CASC {
         }
         $path .= str_replace('\\', DIRECTORY_SEPARATOR, $file);
 
-        $contentHash = false;
-        foreach ($this->nameSources as $nameSourceName => $nameSource) {
-            if ($contentHash = $nameSource->GetContentHash($file, $locale)) {
-                break;
-            }
-        }
-        if (!$contentHash) {
+        $contentHash = $this->getContentHash($file, $locale);
+        if ($contentHash === false) {
             return false;
         }
-
+        if (file_exists($path) && md5_file($path, true) === $contentHash) {
+            return 'Already Exists';
+        }
         return $this->fetchContentHash($contentHash, $path);
     }
 
-    private function getTactKey() {
+    private function fetchTactKey() {
         echo "Loading encryption keys..";
 
         $files = [
@@ -153,7 +164,7 @@ class CASC {
 
         BLTE::loadEncryptionKeys($keys);
 
-        echo sprintf(" OK (%d)\n", count($keys));
+        echo sprintf(" OK (+%d)\n", count($keys));
     }
 
     private static function byteArrayToString($bytes) {

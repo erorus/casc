@@ -141,7 +141,6 @@ class HTTP {
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_FRESH_CONNECT  => static::NeedsNewConnection($url),
             CURLOPT_SSLVERSION     => 6, //CURL_SSLVERSION_TLSv1_2,
-            CURLOPT_TIMEOUT        => PHP_SAPI == 'cli' ? 30 : 8,
             CURLOPT_CONNECTTIMEOUT => 6,
             CURLOPT_ENCODING       => 'gzip',
         ]);

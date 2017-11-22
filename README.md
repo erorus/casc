@@ -33,7 +33,7 @@ Example:
 
 This was written in a Linux environment, though it should also function in Windows. Windows compatibility has not yet been tested.
 
-This requires at least PHP 7.0.
+This requires at least 64-bit PHP 7.0.
 
 ## Game Compatibility
 
@@ -46,7 +46,6 @@ This tool is still in development, though most of the basic stuff is complete. I
 Command line options and default functionality may change in later versions.
 
 Major parts that are still unfinished or untested:
-* Encrypted files
 * Anything referenced in table B and the string block in Encoding
 
 Features that are not planned to be supported:
