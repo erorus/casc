@@ -28,7 +28,7 @@ abstract class ChunkType {
         $this->chunkIndex = $chunkInfo['id'];
         $this->chunkCount = $chunkInfo['chunkCount'] ?? 0;
 
-        $this->encodedSize = isset($chunkInfo['encodedSize']) ? $chunkInfo['encodedSize'] - 1 : null;
+        $this->encodedSize = (isset($chunkInfo['encodedSize']) && is_numeric($chunkInfo['encodedSize'])) ? $chunkInfo['encodedSize'] - 1 : null;
         $this->decodedSize = $chunkInfo['decodedSize'] ?? null;
         $this->fileHandle = $fileHandle;
     }

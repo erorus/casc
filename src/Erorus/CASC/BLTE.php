@@ -107,7 +107,7 @@ class BLTE
         if (!$this->chunkCount) {
             if ($this->headerSize == 0) {
                 $this->chunkCount = 1;
-                $this->chunkInfo[] = ['encodedSize' => '*'];
+                $this->chunkInfo[] = ['encodedSize' => '*', 'id' => 0, 'chunkCount' => 1];
             } else {
                 if ($this->streamPosition < 12) {
                     return $writtenBytes;
