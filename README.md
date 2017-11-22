@@ -62,6 +62,8 @@ World of Warcraft, Warcraft, Battle.net and Blizzard Entertainment are trademark
 
 I could not have done this without the documentation at [the WoWDev wiki](https://wowdev.wiki/CASC). Thanks to those who contribute there!
 
+Some BLTE processing details (especially for encrypted blocks) came from [the CASCExplorer project](https://github.com/WoW-Tools/CASCExplorer).
+
 ## License
 
 Copyright 2017 Gerard Dombroski
