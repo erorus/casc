@@ -22,6 +22,8 @@ function getHomeDir() {
 
 function main()
 {
+    ini_set('memory_limit', '512M');
+
     $dest = null;
     $cachePath = $defaultCachePath = (getHomeDir() ?? __DIR__) . DIRECTORY_SEPARATOR . '.casc-cache';
     $wowPath = false;
