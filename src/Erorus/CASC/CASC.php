@@ -88,7 +88,11 @@ class CASC {
         $this->ready = true;
 
         BLTE::loadEncryptionKeys(); // init static keys
-        $this->fetchTactKey();
+        try {
+            $this->fetchTactKey();
+        } catch (\Exception $e) {
+            echo " Failed: ", $e->getMessage(), "\n";
+        }
     }
 
     public function getContentHash($file, $locale = null) {
