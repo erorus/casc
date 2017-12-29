@@ -13,15 +13,16 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/erorus/db2.git",
-                "reference": "2254c1f92edfb25f11925eff98425b604e45fdb5"
+                "reference": "78e5910f238e7661185602645b395a8bd841b2e9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/erorus/db2/zipball/2254c1f92edfb25f11925eff98425b604e45fdb5",
-                "reference": "2254c1f92edfb25f11925eff98425b604e45fdb5",
+                "url": "https://api.github.com/repos/erorus/db2/zipball/78e5910f238e7661185602645b395a8bd841b2e9",
+                "reference": "78e5910f238e7661185602645b395a8bd841b2e9",
                 "shasum": ""
             },
             "require": {
+                "ext-gmp": "*",
                 "ext-mbstring": "*"
             },
             "type": "library",
@@ -45,7 +46,7 @@
                 "source": "https://github.com/erorus/db2/tree/master",
                 "issues": "https://github.com/erorus/db2/issues"
             },
-            "time": "2017-11-17 14:54:18"
+            "time": "2017-12-26 16:52:49"
         }
     ],
     "packages-dev": [],
