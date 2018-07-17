@@ -150,7 +150,16 @@ class BLTE
                 $this->rawBuf = substr($this->rawBuf, 1);
             }
 
-            $this->rawBuf = substr($this->rawBuf, $this->chunkObject->Write(substr($this->rawBuf, 0, $this->chunkObject->getRemainingBytes())));
+            $bytesLeft = $this->chunkObject->getRemainingBytes();
+            if ($bytesLeft > strlen($this->rawBuf) && $bytesLeft - strlen($this->rawBuf) < 32) {
+                // after this write, we'll have fewer than 32 bytes remaining in this chunk
+                // zlib doesn't like adding so few bytes at a time
+                // break out of this while loop early so we can make a bigger write later
+
+                break;
+            }
+
+            $this->rawBuf = substr($this->rawBuf, $this->chunkObject->Write(substr($this->rawBuf, 0, $bytesLeft)));
             if ($this->chunkObject->getRemainingBytes() <= 0) {
                 $this->chunkObject = null;
             }
