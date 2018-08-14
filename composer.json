@@ -23,6 +23,7 @@
     },
     "require": {
         "php-64bit": "^7.0",
+        "ext-curl": "*",
         "erorus/db2": "*"
     }
 }

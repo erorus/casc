@@ -4,8 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "e39eae58198268806b2a9fd4fd8a010b",
-    "content-hash": "2f4871aa224ac3f2994da44fc8c1b265",
+    "content-hash": "9fbdc965f433a037d8015a8759af9685",
     "packages": [
         {
             "name": "erorus/db2",
@@ -13,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/erorus/db2.git",
-                "reference": "a5dce3a16a956e2cb8c8cc3037b5d38946bf188e"
+                "reference": "4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/erorus/db2/zipball/a5dce3a16a956e2cb8c8cc3037b5d38946bf188e",
-                "reference": "a5dce3a16a956e2cb8c8cc3037b5d38946bf188e",
+                "url": "https://api.github.com/repos/erorus/db2/zipball/4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1",
+                "reference": "4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1",
                 "shasum": ""
             },
             "require": {
@@ -46,7 +45,7 @@
                 "source": "https://github.com/erorus/db2/tree/master",
                 "issues": "https://github.com/erorus/db2/issues"
             },
-            "time": "2018-07-17 02:53:45"
+            "time": "2018-07-17T02:59:51+00:00"
         }
     ],
     "packages-dev": [],
@@ -56,7 +55,8 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php-64bit": "^7.0"
+        "php-64bit": "^7.0",
+        "ext-curl": "*"
     },
     "platform-dev": []
 }
