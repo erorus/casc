@@ -4,6 +4,8 @@ namespace Erorus\CASC;
 
 abstract class AbstractDataSource
 {
+    public static $ignoreErrors = false;
+
     abstract public function findHashInIndexes($hash);
     abstract protected function fetchFile($locationInfo, $destPath);
 
@@ -14,7 +16,7 @@ abstract class AbstractDataSource
         $success &= filesize($destPath) > 0;
         $success &= !$contentHash || ($contentHash === md5_file($destPath, true));
 
-        if (!$success) {
+        if (!$success && !self::$ignoreErrors) {
             unlink($destPath);
         }
 

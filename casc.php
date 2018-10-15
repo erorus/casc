@@ -32,8 +32,8 @@ function main()
     $locale = 'enUS';
     $listfile = '';
 
-    $shortOpts = 'o:c:p:r:l:f:w:h';
-    $longOpts = ['out:','cache:','program:','region:','locale:','files:','wow:', 'help'];
+    $shortOpts = 'o:c:p:r:l:f:w:hi';
+    $longOpts = ['out:','cache:','program:','region:','locale:','files:','wow:', 'help', 'ignore'];
 
     $opts = getopt($shortOpts, $longOpts);
     foreach ($opts as $k => $v) {
@@ -42,6 +42,10 @@ function main()
             case 'help':
                 printHelp($defaultCachePath);
                 return 0;
+            case 'i':
+            case 'ignore':
+                CASC\AbstractDataSource::$ignoreErrors = true;
+                break;
             case 'o':
             case 'out':
                 $dest = $v;
@@ -161,7 +165,7 @@ function printHelp($cachePath) {
     echo <<<EOF
     
 Usage: 
-  php $me --files <path> --out <path> [--wow <path>] [--cache <path>] [--program <wow>] [--region <us>] [--locale <enUS>]
+  php $me --files <path> --out <path> [--wow <path>] [--cache <path>] [--program <wow>] [--region <us>] [--locale <enUS>] [--ignore]
   php $me --help
 
 -f, --files    Required. Path of a text file listing the files to extract, one per line. 
@@ -173,6 +177,7 @@ Usage:
 -p, --program  Optional. The NGDP program code (wow, wow_beta, wowt). [default: wow] 
 -r, --region   Optional. Region. (us, eu, cn, tw, kr) [default: us]
 -l, --locale   Optional. Locale. ($locales) [default: enUS]
+-i, --ignore   Optional. Ignore extraction errors (useful to keep partially encrypted files)
 
 -h, --help     This help message.
 
