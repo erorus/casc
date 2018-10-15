@@ -30,7 +30,7 @@ class Encrypted extends ChunkType {
     {
         parent::__construct($chunkInfo, $fileHandle);
 
-        echo $this->statusText = sprintf(" -> Decrypting %d bytes in chunk %d of %d ", $this->encodedSize, $this->chunkIndex, $this->chunkCount);
+        echo $this->statusText = sprintf(" -> Decrypting %d bytes in chunk %d of %d ", $this->encodedSize, $this->chunkIndex + 1, $this->chunkCount);
     }
 
     public function __destruct()
