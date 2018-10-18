@@ -32,10 +32,17 @@ class CASC {
 
         $this->cache = new Cache($cachePath);
 
-        $ngdp = new NGDP($this->cache, $program, $region);
+        /** @var AbstractVersionConfig $ngdp */
+        $ngdp = new Ribbit($this->cache, $program, $region);
         $hosts = $ngdp->getHosts();
         if ( ! count($hosts) || ! $hosts[0]) {
-            throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
+            echo "Could not get config via Ribbit protocol, trying NGDP.\n";
+
+            $ngdp = new NGDP($this->cache, $program, $region);
+            $hosts = $ngdp->getHosts();
+            if ( ! count($hosts) || ! $hosts[0]) {
+                throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
+            }
         }
 
         echo sprintf("%s %s version %s\n", $ngdp->getRegion(), $ngdp->getProgram(), $ngdp->getVersion());
