@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/erorus/db2.git",
-                "reference": "4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1"
+                "reference": "ad7a3cd00fb2bab1696cb09d190d1c1174903b9e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/erorus/db2/zipball/4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1",
-                "reference": "4eafe927bf2f474e61c6d5f990ee1b4cefd0a5e1",
+                "url": "https://api.github.com/repos/erorus/db2/zipball/ad7a3cd00fb2bab1696cb09d190d1c1174903b9e",
+                "reference": "ad7a3cd00fb2bab1696cb09d190d1c1174903b9e",
                 "shasum": ""
             },
             "require": {
@@ -45,7 +45,7 @@
                 "source": "https://github.com/erorus/db2/tree/master",
                 "issues": "https://github.com/erorus/db2/issues"
             },
-            "time": "2018-07-17T02:59:51+00:00"
+            "time": "2018-10-15T01:40:09+00:00"
         },
         {
             "name": "guzzlehttp/psr7",
@@ -208,12 +208,12 @@
             "version": "dev-master",
             "source": {
                 "type": "git",
-                "url": "https://github.com/zbateson/MailMimeParser.git",
+                "url": "https://github.com/zbateson/mail-mime-parser.git",
                 "reference": "3a2699ca2542c9d0863bab84462bcd1923b28aa2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/zbateson/MailMimeParser/zipball/3a2699ca2542c9d0863bab84462bcd1923b28aa2",
+                "url": "https://api.github.com/repos/zbateson/mail-mime-parser/zipball/3a2699ca2542c9d0863bab84462bcd1923b28aa2",
                 "reference": "3a2699ca2542c9d0863bab84462bcd1923b28aa2",
                 "shasum": ""
             },
@@ -262,12 +262,12 @@
             "version": "0.4.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/zbateson/StreamDecorators.git",
+                "url": "https://github.com/zbateson/stream-decorators.git",
                 "reference": "a4499c1bd1b4ed8d19bcac9c9304cf2ead115ec5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/zbateson/StreamDecorators/zipball/a4499c1bd1b4ed8d19bcac9c9304cf2ead115ec5",
+                "url": "https://api.github.com/repos/zbateson/stream-decorators/zipball/a4499c1bd1b4ed8d19bcac9c9304cf2ead115ec5",
                 "reference": "a4499c1bd1b4ed8d19bcac9c9304cf2ead115ec5",
                 "shasum": ""
             },

@@ -33,7 +33,7 @@ class Root extends AbstractNameLookup
     private $fileHandle;
     private $fileSize;
 
-    public function __construct(Cache $cache, $hostPath, $hash, $defaultLocale = 'enUS')
+    public function __construct(Cache $cache, $hosts, $cdnPath, $hash, $defaultLocale = 'enUS')
     {
         if (!key_exists($defaultLocale, static::LOCALE_FLAGS)) {
             throw new \Exception("Locale $defaultLocale is not supported\n");
@@ -45,20 +45,31 @@ class Root extends AbstractNameLookup
 
         $f = $cache->getReadHandle($cachePath);
         if ($f === false) {
-            $f = $cache->getWriteHandle($cachePath, true);
-            if ($f === false) {
-                throw new \Exception("Cannot create temp buffer for root data\n");
-            }
+            foreach ($hosts as $host) {
+                $f = $cache->getWriteHandle($cachePath, true);
+                if ($f === false) {
+                    throw new \Exception("Cannot create temp buffer for root data\n");
+                }
 
-            $url = sprintf('%sdata/%s/%s/%s', $hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
-            $success = HTTP::Get($url, $f);
-            if (!$success) {
+                $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
+                    substr($hash, 2, 2), $hash);
+                try {
+                    $success = HTTP::Get($url, $f);
+                } catch (BLTE\Exception $e) {
+                    $success = false;
+                }
+                if ( ! $success) {
+                    fclose($f);
+                    $cache->deletePath($cachePath);
+                    continue;
+                }
                 fclose($f);
-                $cache->deletePath($cachePath);
+                $f = $cache->getReadHandle($cachePath);
+                break;
+            }
+            if ( ! $success) {
                 throw new \Exception("Could not fetch root data at $url\n");
             }
-            fclose($f);
-            $f = $cache->getReadHandle($cachePath);
         }
 
         $stat = fstat($f);

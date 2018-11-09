@@ -32,24 +32,22 @@ class CASC {
 
         $this->cache = new Cache($cachePath);
 
-        /** @var AbstractVersionConfig $ngdp */
-        $ngdp = new Ribbit($this->cache, $program, $region);
+        $ngdp = new NGDP($this->cache, $program, $region);
         $hosts = $ngdp->getHosts();
-        if ( ! count($hosts) || ! $hosts[0]) {
-            echo "Could not get config via Ribbit protocol, trying NGDP.\n";
 
-            $ngdp = new NGDP($this->cache, $program, $region);
-            $hosts = $ngdp->getHosts();
-            if ( ! count($hosts) || ! $hosts[0]) {
-                throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
-            }
+        $ribbit = new Ribbit($this->cache, $program, $region);
+        if (count($ribbit->getHosts()) >= count($hosts)) {
+            $ngdp = $ribbit;
+            $hosts = $ribbit->getHosts();
+        }
+
+        if ( ! count($hosts) || ! $hosts[0]) {
+            throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
         }
 
         echo sprintf("%s %s version %s\n", $ngdp->getRegion(), $ngdp->getProgram(), $ngdp->getVersion());
 
-        $cdnHost = sprintf('http://%s/%s/', $hosts[0], $ngdp->getCDNPath());
-
-        $buildConfig = new Config($this->cache, $cdnHost, $ngdp->getBuildConfig());
+        $buildConfig = new Config($this->cache, $hosts, $ngdp->getCDNPath(), $ngdp->getBuildConfig());
         if (!isset($buildConfig->encoding[1])) {
             throw new \Exception("Could not find encoding value in build config\n");
         }
@@ -61,7 +59,7 @@ class CASC {
         }
 
         echo "Loading encoding..";
-        $this->encoding = new Encoding($this->cache, $cdnHost, $buildConfig->encoding[1]);
+        $this->encoding = new Encoding($this->cache, $hosts, $ngdp->getCDNPath(), $buildConfig->encoding[1]);
         echo "\n";
 
         echo "Loading install..";
@@ -69,7 +67,7 @@ class CASC {
         if (!$installHeader) {
             throw new \Exception("Could not find install header in Encoding\n");
         }
-        $this->nameSources['Install'] = new Install($this->cache, $cdnHost, bin2hex($installHeader['headers'][0]));
+        $this->nameSources['Install'] = new Install($this->cache, $hosts, $ngdp->getCDNPath(), bin2hex($installHeader['headers'][0]));
         echo "\n";
 
         echo "Loading root..";
@@ -77,10 +75,10 @@ class CASC {
         if (!$rootHeader) {
             throw new \Exception("Could not find root header in Encoding\n");
         }
-        $this->nameSources['Root'] = new Root($this->cache, $cdnHost, bin2hex($rootHeader['headers'][0]), $locale);
+        $this->nameSources['Root'] = new Root($this->cache, $hosts, $ngdp->getCDNPath(), bin2hex($rootHeader['headers'][0]), $locale);
         echo "\n";
 
-        $cdnConfig = new Config($this->cache, $cdnHost, $ngdp->getCDNConfig());
+        $cdnConfig = new Config($this->cache, $hosts, $ngdp->getCDNPath(), $ngdp->getCDNConfig());
 
         if ($wowPath) {
             echo "Loading local indexes..";
@@ -89,7 +87,7 @@ class CASC {
         }
 
         echo "Loading remote indexes..";
-        $this->dataSources['Remote'] = new Archive($this->cache, $cdnHost, $cdnConfig->archives, $wowPath ? $wowPath : null);
+        $this->dataSources['Remote'] = new Archive($this->cache, $hosts, $ngdp->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
         echo "\n";
 
         $this->ready = true;
@@ -148,7 +146,7 @@ class CASC {
         foreach ($files as $id => $path) {
             $contentHash = $this->nameSources['Root']->GetContentHash($path, null);
             if (!$contentHash) {
-                echo " Failed\n";
+                echo " Failed to find $id file\n";
                 return false;
             }
 
@@ -157,12 +155,21 @@ class CASC {
             if (!$this->cache->fileExists($cachePath)) {
                 $success = $this->fetchContentHash($contentHash, $fullCachePath);
                 if (!$success) {
-                    echo " Failed\n";
+                    $this->cache->deletePath($cachePath);
+
+                    echo " Failed to fetch $id file\n";
                     return false;
                 }
             }
 
-            $db2s[$id] = new Reader($fullCachePath);
+            try {
+                $db2s[$id] = new Reader($fullCachePath);
+            } catch (\Exception $e) {
+                $this->cache->deletePath($cachePath);
+
+                echo " Failed to open $id file: " . $e->getMessage() . "\n";
+                return false;
+            }
         }
 
         $keys = [];

@@ -6,18 +6,30 @@ class Config {
 
     private $props = [];
 
-    public function __construct(Cache $cache, $hostPath, $hash) {
+    public function __construct(Cache $cache, $hosts, $cdnPath, $hash) {
         $cachePath = 'config/' . $hash;
 
         $data = $cache->readPath($cachePath);
         if ($data === false) {
-            $url = sprintf('%sconfig/%s/%s/%s', $hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
-            $data = HTTP::Get($url);
+            foreach ($hosts as $host) {
+                $url = sprintf('http://%s/%s/config/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
+                    substr($hash, 2, 2), $hash);
+                $data = HTTP::Get($url);
 
-            $f = $cache->getWriteHandle($cachePath);
-            if ($f !== false) {
-                fwrite($f, $data);
-                fclose($f);
+                if ( ! $data) {
+                    continue;
+                }
+
+                $f = $cache->getWriteHandle($cachePath);
+                if ($f !== false) {
+                    fwrite($f, $data);
+                    fclose($f);
+                }
+                break;
+            }
+
+            if (!$data) {
+                throw new \Exception("Could not fetch config at $url\n");
             }
         }
 

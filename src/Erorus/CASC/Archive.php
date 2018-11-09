@@ -12,16 +12,18 @@ class Archive extends AbstractDataSource
 
     private $hashMapCache = [];
 
-    private $hostPath;
+    private $hosts;
+    private $cdnPath;
 
     const LOCATION_NONE = 0;
     const LOCATION_CACHE = 1;
     const LOCATION_WOW = 2;
 
-    public function __construct(Cache $cache, $hostPath, $hashes, $wowPath = null)
+    public function __construct(Cache $cache, $hosts, $cdnPath, $hashes, $wowPath = null)
     {
         $this->cache = $cache;
-        $this->hostPath = $hostPath;
+        $this->hosts = $hosts;
+        $this->cdnPath = $cdnPath;
 
         if (!is_null($wowPath)) {
             $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);
@@ -226,30 +228,37 @@ class Archive extends AbstractDataSource
             return true;
         }
 
-        $f = $this->cache->getWriteHandle($cachePath);
-        if ($f === false) {
-            throw new \Exception("Cannot create write handle for index file at $cachePath\n");
-        }
-
-        $url = sprintf('%sdata/%s/%s/%s.index', $this->hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
-
         $line = " - Fetching remote index $hash ";
         echo $line, sprintf("\x1B[%dD", strlen($line));
 
         $oldProgressOutput = HTTP::$writeProgressToStream;
         HTTP::$writeProgressToStream = null;
+        $success = false;
+        foreach ($this->hosts as $host) {
+            $url = sprintf('http://%s/%s/data/%s/%s/%s.index', $host, $this->cdnPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
 
-        $success = HTTP::Get($url, $f);
+            $f = $this->cache->getWriteHandle($cachePath);
+            if ($f === false) {
+                throw new \Exception("Cannot create write handle for index file at $cachePath\n");
+            }
+
+            $success = HTTP::Get($url, $f);
+
+            fclose($f);
+
+            if ( ! $success) {
+                $this->cache->deletePath($cachePath);
+            } else {
+                break;
+            }
+        }
 
         HTTP::$writeProgressToStream = $oldProgressOutput;
         echo "\x1B[K";
 
-        if (!$success) {
-            fclose($f);
-            $this->cache->deletePath($cachePath);
+        if ( ! $success) {
             return false;
         }
-        fclose($f);
 
         $this->indexLocations[$hash] = static::LOCATION_CACHE;
 
@@ -258,34 +267,50 @@ class Archive extends AbstractDataSource
 
     private function findHashOnCDN($hash) {
         $hash = bin2hex($hash);
-        $url = sprintf('%sdata/%s/%s/%s', $this->hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
+        foreach ($this->hosts as $host) {
+            $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $this->cdnPath, substr($hash, 0, 2),
+                substr($hash, 2, 2), $hash);
 
-        $headers = HTTP::Head($url);
-        if ($headers['responseCode'] !== 200) {
-            return false;
+            $headers = HTTP::Head($url);
+            if ($headers['responseCode'] === 200) {
+                return ['archive' => $hash];
+            }
         }
 
-        return ['archive' => $hash];
+        return false;
     }
 
     protected function fetchFile($locationInfo, $destPath) {
-        $hash = $locationInfo['archive'];
-        $url = sprintf('%sdata/%s/%s/%s', $this->hostPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
-
         if (!CASC::assertParentDir($destPath, 'output')) {
             return false;
         }
 
-        $writePath = 'blte://' . $destPath;
-        $writeHandle = fopen($writePath, 'wb');
-        if ($writeHandle === false) {
-            throw new \Exception(sprintf("Unable to open %s for writing\n", $writePath));
+        $hash = $locationInfo['archive'];
+        foreach ($this->hosts as $host) {
+            $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $this->cdnPath, substr($hash, 0, 2),
+                substr($hash, 2, 2), $hash);
+
+            $writePath = 'blte://' . $destPath;
+            $writeHandle = fopen($writePath, 'wb');
+            if ($writeHandle === false) {
+                throw new \Exception(sprintf("Unable to open %s for writing\n", $writePath));
+            }
+
+            $range = isset($locationInfo['offset']) ? sprintf('%d-%d', $locationInfo['offset'],
+                $locationInfo['offset'] + $locationInfo['length'] - 1) : null;
+            try {
+                $success = HTTP::Get($url, $writeHandle, $range);
+            } catch (BLTE\Exception $e) {
+                $success = false;
+            }
+
+            fclose($writeHandle);
+            if ( ! $success) {
+                unlink($destPath);
+            } else {
+                break;
+            }
         }
-
-        $range = isset($locationInfo['offset']) ? sprintf('%d-%d', $locationInfo['offset'], $locationInfo['offset'] + $locationInfo['length'] - 1) : null;
-        $success = HTTP::Get($url, $writeHandle, $range);
-
-        fclose($writeHandle);
 
         return !!$success;
     }

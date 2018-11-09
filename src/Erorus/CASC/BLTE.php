@@ -99,7 +99,7 @@ class BLTE
                 return $writtenBytes;
             }
             if (substr($this->rawBuf, 0, 4) !== 'BLTE') {
-                throw new \Exception("Stream is not BLTE encoded\n");
+                throw new BLTE\Exception("Stream is not BLTE encoded\n");
             }
             $this->chunkOffset = $this->headerSize = current(unpack('N', substr($this->rawBuf, 4, 4)));
             $this->rawBuf = substr($this->rawBuf, 8);
@@ -117,7 +117,7 @@ class BLTE
                 $this->rawBuf     = substr($this->rawBuf, 4);
 
                 if ($this->chunkCount <= 0) {
-                    throw new \Exception("BLTE Data is badly formatted: 0 chunks\n");
+                    throw new BLTE\Exception("BLTE Data is badly formatted: 0 chunks\n");
                 }
             }
         }
