@@ -41,7 +41,7 @@ class CASC {
             $hosts = $ribbit->getHosts();
         }
 
-        if ( ! count($hosts) || ! $hosts[0]) {
+        if ( ! count($hosts)) {
             throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
         }
 

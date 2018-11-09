@@ -139,7 +139,7 @@ abstract class AbstractVersionConfig
                 $this->cdnPath = $row['path'];
             }
             if (isset($row['hosts'])) {
-                $this->hosts = explode(' ', $row['hosts']);
+                $this->hosts = new HostList(explode(' ', $row['hosts']));
             }
             if (isset($row['configpath'])) {
                 $this->configPath = $row['configpath'];
