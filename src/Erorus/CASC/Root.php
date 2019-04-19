@@ -98,55 +98,110 @@ class Root extends AbstractNameLookup
 
         $totalNameRecs = 0;
 
-        while (ftell($this->fileHandle) < $this->fileSize) {
-            list($totalRecs, $nameRecs) = array_values(unpack('l*', fread($this->fileHandle, 8)));
-            $contentRecs = $totalRecs - $nameRecs;
-            $totalNameRecs += $nameRecs;
+        list($totalRecs, $nameRecs) = array_values(unpack('l*', fread($this->fileHandle, 8)));
+        $contentRecs = $totalRecs - $nameRecs;
+        $totalNameRecs += $nameRecs;
 
-            $runningTotal = 0;
-            while ($runningTotal < $contentRecs) {
-                $blockId++;
+        $runningTotal = 0;
+        while ($runningTotal < $contentRecs) {
+            $blockId++;
 
-                list($numRec, $flags, $blockLocale) = array_values(unpack('lnumrec/Vflags/Vlocale',
-                    fread($this->fileHandle, 12)));
-                $runningTotal += $numRec;
+            list($numRec, $flags, $blockLocale) = array_values(unpack('lnumrec/Vflags/Vlocale',
+                fread($this->fileHandle, 12)));
+            $runningTotal += $numRec;
 
-                if (($blockLocale & $locale) != $locale) {
-                    fseek($this->fileHandle, $numRec * 20, SEEK_CUR);
-                    continue;
-                }
-                if ( ! isset($this->blockCache[$blockId])) {
-                    $fileDataIds = [];
+            if (($blockLocale & $locale) != $locale) {
+                fseek($this->fileHandle, $numRec * 20, SEEK_CUR);
+                continue;
+            }
+            if ( ! isset($this->blockCache[$blockId])) {
+                $fileDataIds = [];
 
-                    $deltas = \SplFixedArray::fromArray(unpack('i*', fread($this->fileHandle, 4 * $numRec)), false);
-                    $prevId = -1;
+                $deltas = \SplFixedArray::fromArray(unpack('i*', fread($this->fileHandle, 4 * $numRec)), false);
+                $prevId = -1;
 
-                    for ($chunkOffset = 0; $chunkOffset < $numRec; $chunkOffset += $chunkSize) {
-                        $chunkSize = min(static::CHUNK_RECORD_COUNT, $numRec - $chunkOffset);
+                for ($chunkOffset = 0; $chunkOffset < $numRec; $chunkOffset += $chunkSize) {
+                    $chunkSize = min(static::CHUNK_RECORD_COUNT, $numRec - $chunkOffset);
 
-                        $data = \SplFixedArray::fromArray(str_split(fread($this->fileHandle, 16 * $chunkSize), 16),
-                            false);
-                        for ($pos = 0; $pos < $chunkSize; $pos++) {
-                            $contentKey = $data[$pos];
+                    $data = \SplFixedArray::fromArray(str_split(fread($this->fileHandle, 16 * $chunkSize), 16), false);
+                    for ($pos = 0; $pos < $chunkSize; $pos++) {
+                        $contentKey = $data[$pos];
 
-                            $fileDataIds[$prevId = $deltas[$chunkOffset + $pos] + $prevId + 1] = $contentKey;
-                        }
-                        unset($data);
+                        $fileDataIds[$prevId = $deltas[$chunkOffset + $pos] + $prevId + 1] = $contentKey;
                     }
-                    unset($deltas);
-                    $this->blockCache[$blockId] = $fileDataIds;
-                } else {
-                    $fileDataIds = $this->blockCache[$blockId];
-                    fseek($this->fileHandle, $numRec * 20, SEEK_CUR);
+                    unset($data);
                 }
-
-                if (isset($fileDataIds[$db2OrId])) {
-                    return $fileDataIds[$db2OrId];
-                }
+                unset($deltas);
+                $this->blockCache[$blockId] = $fileDataIds;
+            } else {
+                $fileDataIds = $this->blockCache[$blockId];
+                fseek($this->fileHandle, $numRec * 20, SEEK_CUR);
             }
 
-            // TODO: whatever name hashes we have left
-            break;
+            if (isset($fileDataIds[$db2OrId])) {
+                return $fileDataIds[$db2OrId];
+            }
+        }
+
+        $hashedName = static::jenkins_hashlittle2(strtoupper($db2OrId));
+        $runningTotal = 0;
+        while ($runningTotal < $nameRecs) {
+            $blockId++;
+
+            list($numRec, $flags, $blockLocale) = array_values(unpack('lnumrec/Vflags/Vlocale',
+                fread($this->fileHandle, 12)));
+            $runningTotal += $numRec;
+
+            if (($blockLocale & $locale) != $locale) {
+                fseek($this->fileHandle, $numRec * 28, SEEK_CUR);
+                continue;
+            }
+            if ( ! isset($this->blockCache[$blockId])) {
+                $fileDataIds = [];
+                $nameHashes = [];
+
+                $deltas = \SplFixedArray::fromArray(unpack('i*', fread($this->fileHandle, 4 * $numRec)), false);
+
+                $prevId = -1;
+                for ($chunkOffset = 0; $chunkOffset < $numRec; $chunkOffset += $chunkSize) {
+                    $chunkSize = min(static::CHUNK_RECORD_COUNT, $numRec - $chunkOffset);
+
+                    $data = \SplFixedArray::fromArray(str_split(fread($this->fileHandle, 16 * $chunkSize), 16), false);
+                    for ($pos = 0; $pos < $chunkSize; $pos++) {
+                        $contentKey = $data[$pos];
+
+                        $fileDataIds[$prevId = $deltas[$chunkOffset + $pos] + $prevId + 1] = $contentKey;
+                    }
+                    unset($data);
+                }
+
+                $prevId = -1;
+                for ($chunkOffset = 0; $chunkOffset < $numRec; $chunkOffset += $chunkSize) {
+                    $chunkSize = min(static::CHUNK_RECORD_COUNT, $numRec - $chunkOffset);
+
+                    $data = \SplFixedArray::fromArray(str_split(fread($this->fileHandle, 8 * $chunkSize), 8), false);
+                    for ($pos = 0; $pos < $chunkSize; $pos++) {
+                        $nameHash = $data[$pos];
+
+                        $nameHashes[$nameHash] = $fileDataIds[$prevId = $deltas[$chunkOffset + $pos] + $prevId + 1];
+                    }
+                    unset($data);
+                }
+
+                unset($deltas);
+                $this->blockCache[$blockId] = [$fileDataIds, $nameHashes];
+            } else {
+                list($fileDataIds, $nameHashes) = $this->blockCache[$blockId];
+                fseek($this->fileHandle, $numRec * 28, SEEK_CUR);
+            }
+
+            if (isset($fileDataIds[$db2OrId])) {
+                return $fileDataIds[$db2OrId];
+            }
+
+            if (isset($nameHashes[$hashedName])) {
+                return $nameHashes[$hashedName];
+            }
         }
 
         return false;

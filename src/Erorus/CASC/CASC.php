@@ -136,8 +136,8 @@ class CASC {
         echo "Loading encryption keys..";
 
         $files = [
-            'tactKey' => 'DBFilesClient\\TactKey.db2',
-            'tactKeyLookup' => 'DBFilesClient\\TactKeyLookup.db2',
+            'tactKey' => 1302850,
+            'tactKeyLookup' => 1302851,
         ];
 
         /** @var Reader[] $db2s */
