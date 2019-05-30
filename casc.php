@@ -139,7 +139,8 @@ function main()
         } else {
             $destName = $file;
         }
-        $destPath = $dest . DIRECTORY_SEPARATOR . $destName;
+        $slash = DIRECTORY_SEPARATOR;
+        $destPath = $dest . $slash . strtr($destName, ['/' => $slash, '\\' => $slash]);
 
         $totalCount++;
         echo $destName;
