@@ -133,10 +133,18 @@ function main()
             continue;
         }
 
-        $totalCount++;
-        echo $file;
+        if (preg_match('/^(\d+)\W*([\w\W]+)$/', $file, $res)) {
+            $destName = $res[2];
+            $file = $res[1];
+        } else {
+            $destName = $file;
+        }
+        $destPath = $dest . DIRECTORY_SEPARATOR . $destName;
 
-        $success = $casc->fetchFile($file, $dest);
+        $totalCount++;
+        echo $destName;
+
+        $success = $casc->fetchFile($file, $destPath);
         $successCount += $success ? 1 : 0;
 
         $success = $success ? sprintf('OK (%s)', $success) : 'Failed';

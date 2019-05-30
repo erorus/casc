@@ -110,26 +110,19 @@ class CASC {
         return $contentHash;
     }
 
-    public function fetchFile($file, $destRoot, $locale = null) {
+    public function fetchFile($sourceId, $destPath, $locale = null) {
         if (!$this->ready) {
             return false;
         }
 
-        $path = $destRoot;
-        $sep = DIRECTORY_SEPARATOR;
-        if (substr($path, -1 * strlen($sep)) != $sep) {
-            $path .= $sep;
-        }
-        $path .= str_replace('\\', DIRECTORY_SEPARATOR, $file);
-
-        $contentHash = $this->getContentHash($file, $locale);
+        $contentHash = $this->getContentHash($sourceId, $locale);
         if ($contentHash === false) {
             return false;
         }
-        if (file_exists($path) && md5_file($path, true) === $contentHash) {
+        if (file_exists($destPath) && md5_file($destPath, true) === $contentHash) {
             return 'Already Exists';
         }
-        return $this->fetchContentHash($contentHash, $path);
+        return $this->fetchContentHash($contentHash, $destPath);
     }
 
     private function fetchTactKey() {
