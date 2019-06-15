@@ -115,6 +115,7 @@ class CASC {
             return false;
         }
 
+        $sourceId = strtr($sourceId, ['/' => '\\']);
         $contentHash = $this->getContentHash($sourceId, $locale);
         if ($contentHash === false) {
             return false;
