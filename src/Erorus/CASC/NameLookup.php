@@ -2,7 +2,7 @@
 
 namespace Erorus\CASC;
 
-abstract class AbstractNameLookup
+abstract class NameLookup
 {
     abstract public function GetContentHash($db2OrId, $locale);
 }

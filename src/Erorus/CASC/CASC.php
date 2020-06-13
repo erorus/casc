@@ -2,6 +2,12 @@
 
 namespace Erorus\CASC;
 
+use Erorus\CASC\DataSource\Archive;
+use Erorus\CASC\DataSource\Index;
+use Erorus\CASC\NameLookup\Install;
+use Erorus\CASC\NameLookup\Root;
+use Erorus\CASC\VersionConfig\NGDP;
+use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
 
 class CASC {
@@ -12,10 +18,10 @@ class CASC {
     /** @var Encoding */
     private $encoding;
 
-    /** @var AbstractNameLookup[] */
+    /** @var NameLookup[] */
     private $nameSources = [];
 
-    /** @var AbstractDataSource[] */
+    /** @var DataSource[] */
     private $dataSources = [];
 
     private $ready = false;

@@ -1,9 +1,11 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\DataSource;
 
-class Index extends AbstractDataSource
-{
+use Erorus\CASC\CASC;
+use Erorus\CASC\DataSource;
+
+class Index extends DataSource {
     private $indexPath = false;
     private $files = [];
 

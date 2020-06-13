@@ -1,9 +1,13 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\NameLookup;
 
-class Install extends AbstractNameLookup
-{
+use Erorus\CASC\BLTE;
+use Erorus\CASC\Cache;
+use Erorus\CASC\HTTP;
+use Erorus\CASC\NameLookup;
+
+class Install extends NameLookup {
     private $hashes = [];
 
     public function __construct(Cache $cache, $hosts, $cdnPath, $hash)

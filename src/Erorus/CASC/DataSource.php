@@ -2,7 +2,7 @@
 
 namespace Erorus\CASC;
 
-abstract class AbstractDataSource
+abstract class DataSource
 {
     public static $ignoreErrors = false;
 

@@ -1,11 +1,12 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\VersionConfig;
 
-use \ZBateson\MailMimeParser\MailMimeParser;
-use \ZBateson\MailMimeParser\Message\Part\MessagePart;
+use Erorus\CASC\VersionConfig;
+use ZBateson\MailMimeParser\MailMimeParser;
+use ZBateson\MailMimeParser\Message\Part\MessagePart;
 
-class Ribbit extends AbstractVersionConfig {
+class Ribbit extends VersionConfig {
 
     const RIBBIT_HOST = 'us.version.battle.net';
     const RIBBIT_PORT = 1119;

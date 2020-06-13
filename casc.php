@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use \Erorus\CASC;
+use Erorus\CASC;
 
 function getHomeDir() {
     $home = getenv('HOME');
@@ -44,7 +44,7 @@ function main()
                 return 0;
             case 'i':
             case 'ignore':
-                CASC\AbstractDataSource::$ignoreErrors = true;
+                CASC\DataSource::$ignoreErrors = true;
                 break;
             case 'o':
             case 'out':
@@ -167,7 +167,7 @@ function printHelp($cachePath) {
 
     $me = $argv[0];
 
-    $locales = CASC\Root::LOCALE_FLAGS;
+    $locales = CASC\NameLookup\Root::LOCALE_FLAGS;
     ksort($locales);
     $locales = implode(", ", array_keys($locales));
 

@@ -1,8 +1,11 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\VersionConfig;
 
-class NGDP extends AbstractVersionConfig {
+use Erorus\CASC\HTTP;
+use Erorus\CASC\VersionConfig;
+
+class NGDP extends VersionConfig {
 
     const NGDP_HOST = 'http://us.patch.battle.net:1119/';
 

@@ -1,8 +1,13 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\NameLookup;
 
-class Root extends AbstractNameLookup
+use Erorus\CASC\BLTE;
+use Erorus\CASC\Cache;
+use Erorus\CASC\HTTP;
+use Erorus\CASC\NameLookup;
+
+class Root extends NameLookup
 {
     const LOCALE_FLAGS = [
         'enUS' => 0x2,

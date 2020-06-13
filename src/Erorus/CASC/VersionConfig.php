@@ -2,8 +2,7 @@
 
 namespace Erorus\CASC;
 
-abstract class AbstractVersionConfig
-{
+abstract class VersionConfig {
     const MAX_CACHE_AGE = 3600; // 1 hour
 
     private $region;

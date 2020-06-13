@@ -1,9 +1,14 @@
 <?php
 
-namespace Erorus\CASC;
+namespace Erorus\CASC\DataSource;
 
-class Archive extends AbstractDataSource
-{
+use Erorus\CASC\BLTE;
+use Erorus\CASC\CASC;
+use Erorus\CASC\Cache;
+use Erorus\CASC\DataSource;
+use Erorus\CASC\HTTP;
+
+class Archive extends DataSource {
     private $cache;
 
     private $indexPath = false;
