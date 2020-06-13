@@ -33,7 +33,7 @@ Example:
 
 This was written in a Linux environment, though it should also function in Windows. Windows compatibility has not yet been tested.
 
-This requires at least 64-bit PHP 7.0.
+This requires at least 64-bit PHP 7.2.
 
 ## Game Compatibility
 

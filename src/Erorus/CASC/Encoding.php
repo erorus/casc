@@ -16,10 +16,10 @@ class Encoding
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
-        if ($f === false) {
+        if (is_null($f)) {
             foreach ($hosts as $host) {
                 $f = $cache->getWriteHandle($cachePath, true);
-                if ($f === false) {
+                if (is_null($f)) {
                     throw new \Exception("Cannot create cache location for encoding data\n");
                 }
 
@@ -32,7 +32,7 @@ class Encoding
                 }
                 if ( ! $success) {
                     fclose($f);
-                    $cache->deletePath($cachePath);
+                    $cache->delete($cachePath);
                     continue;
                 }
                 fclose($f);

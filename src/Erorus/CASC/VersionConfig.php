@@ -97,7 +97,8 @@ abstract class VersionConfig {
         if ($maxAge && $this->cache->fileModified($cachePath) < (time() - $maxAge)) {
             return false;
         }
-        return $this->cache->readPath($cachePath);
+
+        return $this->cache->read($cachePath) ?? false;
     }
 
     abstract protected function getTACTData($file);

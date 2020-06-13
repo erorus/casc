@@ -55,10 +55,10 @@ class Root extends NameLookup
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
-        if ($f === false) {
+        if (is_null($f)) {
             foreach ($hosts as $host) {
                 $f = $cache->getWriteHandle($cachePath, true);
-                if ($f === false) {
+                if (is_null($f)) {
                     throw new \Exception("Cannot create temp buffer for root data\n");
                 }
 
@@ -71,7 +71,7 @@ class Root extends NameLookup
                 }
                 if ( ! $success) {
                     fclose($f);
-                    $cache->deletePath($cachePath);
+                    $cache->delete($cachePath);
                     continue;
                 }
                 fclose($f);

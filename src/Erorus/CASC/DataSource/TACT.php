@@ -243,7 +243,7 @@ class TACT extends DataSource {
             $url = sprintf('http://%s/%s/data/%s/%s/%s.index', $host, $this->cdnPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
 
             $f = $this->cache->getWriteHandle($cachePath);
-            if ($f === false) {
+            if (is_null($f)) {
                 throw new \Exception("Cannot create write handle for index file at $cachePath\n");
             }
 
@@ -252,7 +252,7 @@ class TACT extends DataSource {
             fclose($f);
 
             if ( ! $success) {
-                $this->cache->deletePath($cachePath);
+                $this->cache->delete($cachePath);
             } else {
                 break;
             }

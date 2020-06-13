@@ -19,7 +19,7 @@ class HTTP extends VersionConfig {
             if (!$data) {
                 $data = $this->getCachedResponse($cachePath);
             } else {
-                $this->cache->writePath($cachePath, $data);
+                $this->cache->write($cachePath, $data);
             }
         }
 

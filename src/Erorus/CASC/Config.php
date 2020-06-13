@@ -9,8 +9,8 @@ class Config {
     public function __construct(Cache $cache, $hosts, $cdnPath, $hash) {
         $cachePath = 'config/' . $hash;
 
-        $data = $cache->readPath($cachePath);
-        if ($data === false) {
+        $data = $cache->read($cachePath);
+        if (is_null($data)) {
             foreach ($hosts as $host) {
                 $url = sprintf('http://%s/%s/config/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
                     substr($hash, 2, 2), $hash);
@@ -21,7 +21,7 @@ class Config {
                 }
 
                 $f = $cache->getWriteHandle($cachePath);
-                if ($f !== false) {
+                if (!is_null($f)) {
                     fwrite($f, $data);
                     fclose($f);
                 }

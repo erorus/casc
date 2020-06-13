@@ -22,7 +22,7 @@
         }
     },
     "require": {
-        "php-64bit": "^7.0",
+        "php-64bit": "^7.2",
         "ext-curl": "*",
         "erorus/db2": "*",
         "zbateson/mail-mime-parser": "dev-master"

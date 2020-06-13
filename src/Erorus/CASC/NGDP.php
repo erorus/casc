@@ -155,7 +155,7 @@ class NGDP {
             if (!$this->cache->fileExists($cachePath)) {
                 $success = $this->fetchContentHash($contentHash, $fullCachePath);
                 if (!$success) {
-                    $this->cache->deletePath($cachePath);
+                    $this->cache->delete($cachePath);
 
                     echo " Failed to fetch $id file\n";
                     return false;
@@ -165,7 +165,7 @@ class NGDP {
             try {
                 $db2s[$id] = new Reader($fullCachePath);
             } catch (\Exception $e) {
-                $this->cache->deletePath($cachePath);
+                $this->cache->delete($cachePath);
 
                 echo " Failed to open $id file: " . $e->getMessage() . "\n";
                 return false;

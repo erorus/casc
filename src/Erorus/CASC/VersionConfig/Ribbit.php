@@ -49,7 +49,7 @@ class Ribbit extends VersionConfig {
         }
 
         if ($data) {
-            $this->cache->writePath($cachePath, $data);
+            $this->cache->write($cachePath, $data);
         } else {
             $data = $this->getCachedResponse($cachePath);
         }

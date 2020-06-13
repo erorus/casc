@@ -15,10 +15,10 @@ class Install extends NameLookup {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
-        if ($f === false) {
+        if (is_null($f)) {
             foreach ($hosts as $host) {
                 $f = $cache->getWriteHandle($cachePath, true);
-                if ($f === false) {
+                if (is_null($f)) {
                     throw new \Exception("Cannot create cache location for install data\n");
                 }
 
@@ -31,7 +31,7 @@ class Install extends NameLookup {
                 }
                 if ( ! $success) {
                     fclose($f);
-                    $cache->deletePath($cachePath);
+                    $cache->delete($cachePath);
                     continue;
                 }
                 fclose($f);
@@ -45,7 +45,7 @@ class Install extends NameLookup {
 
         $magic = fread($f, 2);
         if ($magic != 'IN') {
-            $cache->deletePath($cachePath);
+            $cache->delete($cachePath);
             throw new \Exception("Install file did not have expected magic signature IN\n");
         }
         $header = unpack('Cunk/ChashSize/ntags/Nentries', fread($f, 8));
