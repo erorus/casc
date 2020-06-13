@@ -2,15 +2,15 @@
 
 namespace Erorus\CASC;
 
-use Erorus\CASC\DataSource\Archive;
-use Erorus\CASC\DataSource\Index;
+use Erorus\CASC\DataSource\CASC;
+use Erorus\CASC\DataSource\TACT;
 use Erorus\CASC\NameLookup\Install;
 use Erorus\CASC\NameLookup\Root;
 use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
 use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
 
-class CASC {
+class NGDP {
     
     /** @var Cache */
     private $cache;
@@ -88,12 +88,12 @@ class CASC {
 
         if ($wowPath) {
             echo "Loading local indexes..";
-            $this->dataSources['Local'] = new Index($wowPath);
+            $this->dataSources['Local'] = new CASC($wowPath);
             echo "\n";
         }
 
         echo "Loading remote indexes..";
-        $this->dataSources['Remote'] = new Archive($this->cache, $hosts, $versionConfig->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
+        $this->dataSources['Remote'] = new TACT($this->cache, $hosts, $versionConfig->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
         echo "\n";
 
         $this->ready = true;
@@ -214,20 +214,5 @@ class CASC {
         }
 
         return false;
-    }
-
-    public static function assertParentDir($fullPath, $type) {
-        $parentDir = dirname($fullPath);
-        if (!is_dir($parentDir)) {
-            if (!mkdir($parentDir, 0755, true)) {
-                fwrite(STDERR, "Cannot create $type dir $parentDir\n");
-                return false;
-            }
-        } elseif (!is_writable($parentDir)) {
-            fwrite(STDERR, "Cannot write in $type dir $parentDir\n");
-            return false;
-        }
-
-        return true;
     }
 }

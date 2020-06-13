@@ -2,10 +2,10 @@
 
 namespace Erorus\CASC\DataSource;
 
-use Erorus\CASC\CASC;
 use Erorus\CASC\DataSource;
+use Erorus\CASC\Util;
 
-class Index extends DataSource {
+class CASC extends DataSource {
     private $indexPath = false;
     private $files = [];
 
@@ -151,7 +151,7 @@ class Index extends DataSource {
 
         fseek($readHandle, 10, SEEK_CUR);
 
-        if (!CASC::assertParentDir($destPath, 'output')) {
+        if (!Util::assertParentDir($destPath, 'output')) {
             return false;
         }
 

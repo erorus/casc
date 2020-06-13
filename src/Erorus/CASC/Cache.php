@@ -56,7 +56,7 @@ class Cache {
     public function writePath($path, $data) {
         $fullPath = $this->getFullPath($path);
 
-        CASC::assertParentDir($fullPath, 'cache');
+        Util::assertParentDir($fullPath, 'cache');
 
         return file_put_contents($fullPath, $data, LOCK_EX);
     }
@@ -77,7 +77,7 @@ class Cache {
             return false;
         }
 
-        CASC::assertParentDir($fullPath, 'cache');
+        Util::assertParentDir($fullPath, 'cache');
 
         if ($blte) {
             $fullPath = 'blte://' . $fullPath;

@@ -3,12 +3,12 @@
 namespace Erorus\CASC\DataSource;
 
 use Erorus\CASC\BLTE;
-use Erorus\CASC\CASC;
 use Erorus\CASC\Cache;
 use Erorus\CASC\DataSource;
 use Erorus\CASC\HTTP;
+use Erorus\CASC\Util;
 
-class Archive extends DataSource {
+class TACT extends DataSource {
     private $cache;
 
     private $indexPath = false;
@@ -286,7 +286,7 @@ class Archive extends DataSource {
     }
 
     protected function fetchFile($locationInfo, $destPath) {
-        if (!CASC::assertParentDir($destPath, 'output')) {
+        if (!Util::assertParentDir($destPath, 'output')) {
             return false;
         }
 

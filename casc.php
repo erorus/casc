@@ -116,7 +116,7 @@ function main()
     echo "Cache dir: $cachePath\n";
 
     try {
-        $casc = new CASC\CASC($cachePath, $wowPath, $program, $region, $locale);
+        $ngdp = new CASC\NGDP($cachePath, $wowPath, $program, $region, $locale);
     } catch (\Exception $e) {
         echo $e->getMessage(), "\n";
         return 1;
@@ -145,7 +145,7 @@ function main()
         $totalCount++;
         echo $destName;
 
-        $success = $casc->fetchFile($file, $destPath);
+        $success = $ngdp->fetchFile($file, $destPath);
         $successCount += $success ? 1 : 0;
 
         $success = $success ? sprintf('OK (%s)', $success) : 'Failed';
