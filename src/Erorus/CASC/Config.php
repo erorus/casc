@@ -2,21 +2,40 @@
 
 namespace Erorus\CASC;
 
+/**
+ * Blizzard's TACT config files (Build and CDN) follow a common format, both in their URLs and their contents. This
+ * fetches those config files and provides a common interface for reading their data.
+ */
 class Config {
-
+    /** @var array[] Keyed by property name, the data strings for each.  */
     private $props = [];
 
-    public function __construct(Cache $cache, $hosts, $cdnPath, $hash) {
+    /**
+     * @param Cache $cache A disk cache where we can find and store raw configs we download.
+     * @param \Iterator $hosts Typically a HostList, or an array. CDN hostnames.
+     * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets
+     * @param string $hash The hex hash string for the file to read.
+     *
+     * @throws \Exception
+     */
+    public function __construct(Cache $cache, \Iterator $hosts, string $cdnPath, string $hash) {
         $cachePath = 'config/' . $hash;
 
         $data = $cache->read($cachePath);
         if (is_null($data)) {
+            // Fetch it and cache it.
             foreach ($hosts as $host) {
-                $url = sprintf('http://%s/%s/config/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
-                    substr($hash, 2, 2), $hash);
+                $url = sprintf(
+                    'http://%s/%s/config/%s/%s/%s',
+                    $host,
+                    $cdnPath,
+                    substr($hash, 0, 2),
+                    substr($hash, 2, 2),
+                    $hash
+                );
                 $data = HTTP::Get($url);
 
-                if ( ! $data) {
+                if (!$data) {
                     continue;
                 }
 
@@ -43,8 +62,14 @@ class Config {
         }
     }
 
-    public function __get($nm) {
-        return $this->props[$nm] ?? [];
+    /**
+     * Returns all the values under a property name.
+     *
+     * @param string $name The property name.
+     *
+     * @return string[]
+     */
+    public function __get(string $name): array {
+        return $this->props[$name] ?? [];
     }
-
 }
