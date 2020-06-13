@@ -2,9 +2,12 @@
 
 namespace Erorus\CASC;
 
-abstract class DataSource
-{
-    public static $ignoreErrors = false;
+/**
+ * DataSources are from where we can extract data for specific files.
+ */
+abstract class DataSource {
+    /** @var bool True to allow extracted files with errors to remain on the filesystem, false to remove them. */
+    private static $ignoreErrors = false;
 
     abstract public function findHashInIndexes($hash);
     abstract protected function fetchFile($locationInfo, $destPath);
@@ -21,5 +24,20 @@ abstract class DataSource
         }
 
         return $success;
+    }
+
+    /**
+     * Get/Set whether we ignore errors during extraction.
+     *
+     * @param bool $doIgnore
+     *
+     * @return bool The current state of whether errors are ignored.
+     */
+    public static function ignoreErrors(?bool $doIgnore = null): bool {
+        if (!is_null($doIgnore)) {
+            self::$ignoreErrors = $doIgnore;
+        }
+
+        return self::$ignoreErrors;
     }
 }

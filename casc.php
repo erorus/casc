@@ -44,7 +44,7 @@ function main()
                 return 0;
             case 'i':
             case 'ignore':
-                CASC\DataSource::$ignoreErrors = true;
+                CASC\DataSource::ignoreErrors(true);
                 break;
             case 'o':
             case 'out':
