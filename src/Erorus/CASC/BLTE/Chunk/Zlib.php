@@ -1,8 +1,10 @@
 <?php
 
-namespace Erorus\CASC\BLTE;
+namespace Erorus\CASC\BLTE\Chunk;
 
-class Zlib extends ChunkType {
+use Erorus\CASC\BLTE\Chunk;
+
+class Zlib extends Chunk {
     private $context = null;
 
     private $headerBytes = '';

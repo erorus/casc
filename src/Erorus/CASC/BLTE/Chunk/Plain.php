@@ -1,8 +1,10 @@
 <?php
 
-namespace Erorus\CASC\BLTE;
+namespace Erorus\CASC\BLTE\Chunk;
 
-class Plain extends ChunkType {
+use Erorus\CASC\BLTE\Chunk;
+
+class Plain extends Chunk {
     public function Write($buffer) {
         $written = fwrite($this->fileHandle, $buffer);
         $this->encodedBytesWritten += $written;

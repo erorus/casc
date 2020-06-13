@@ -1,10 +1,11 @@
 <?php
 
-namespace Erorus\CASC\BLTE;
+namespace Erorus\CASC\BLTE\Chunk;
 
 use Erorus\CASC\BLTE;
+use Erorus\CASC\BLTE\Chunk;
 
-class Encrypted extends ChunkType {
+class Encrypted extends Chunk {
 
     private $keyNameLength = 0;
     private $keyName = '';
@@ -102,7 +103,7 @@ class Encrypted extends ChunkType {
             $chainedChunkType = substr($buffer, 0, 1) ^ $this->GetSalsaBytes(1);
             $buffer = substr($buffer, 1);
 
-            $this->chainedChunk = ChunkType::MakeChunk($chainedChunkType, [
+            $this->chainedChunk = Chunk::MakeChunk($chainedChunkType, [
                 'id' => $this->chunkIndex,
                 'encodedSize' => $this->decodedSize + 1,
             ], $this->fileHandle);

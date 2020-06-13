@@ -2,33 +2,96 @@
 
 namespace Erorus\CASC;
 
-class BLTE
-{
+/**
+ * BLTE is an encoding method which Blizzard uses for files stored inside TACT and CASC.
+ *
+ * This class serves two functions:
+ *   - a URL wrapper for stream_wrapper_register(), where we write BLTE-encoded data and save it decoded.
+ *   - static functions to handle BLTE encryption keys ("TACT keys").
+ */
+class BLTE {
+    /** @var resource|null The current resource context for the stream. */
     public $context;
 
+    /** @var resource The actual file handle we're writing to. */
     private $fileHandle;
+
+    /** @var bool Whether this stream was opened with the STREAM_REPORT_ERRORS flag. */
     private $reportErrors;
 
+    /** @var int The current position of the file pointer in the BLTE-encoded stream. */
     private $streamPosition;
 
+    /** @var string A buffer where we store BLTE-encoded data before writing it decoded. */
     private $rawBuf = '';
-    private $headerSize = false;
+
+    /** @var int|null The size of the BLTE header. */
+    private $headerSize = null;
+
+    /** @var int How many BLTE chunks are in this file. */
     private $chunkCount = 0;
+
+    /** @var array[] Various data attributes for each BLTE chunk. */
     private $chunkInfo = [];
-    private $chunkIndex = -1;
+
+    /** @var int Which index of the chunk we're currently parsing. */
+    private $chunkIndex = 0;
+
+    /** @var int A running total of how many bytes precede the start of the chunk data we're parsing. */
     private $chunkOffset = 0;
 
-    /** @var BLTE\ChunkType */
+    /** @var BLTE\Chunk The chunk we're parsing. */
     private $chunkObject = null;
 
+    /** @var string[] Tact keys, keyed by name. Representations of both are in binary bytes (not hex).  */
     private static $encryptionKeys = [];
 
-    public function stream_open($path, $mode, $options, $opened_path) {
+    /**
+     * Close the stream.
+     */
+    public function stream_close(): void {
+        $this->chunkObject = null; // destruct any chunk object
+
+        fclose($this->fileHandle);
+    }
+
+    /**
+     * Are we at the end of the stream? Yes, since we only ever write to the end.
+     *
+     * @return bool
+     */
+    public function stream_eof(): bool {
+        return true;
+    }
+
+    /**
+     * Flush writes to disk.
+     *
+     * @return bool
+     */
+    public function stream_flush(): bool {
+        return fflush($this->fileHandle);
+    }
+
+    /**
+     * Defined by \streamWrapper, opens a write stream.
+     *
+     * @param string $path The full URL path passed to fopen()
+     * @param string $mode The mode passed to fopen()
+     * @param int $options Flags set by the streams API.
+     * @param string $opened_path The full path of the file we actually open.
+     *
+     * @return bool
+     */
+    public function stream_open(string $path, string $mode, int $options, ?string &$opened_path): bool {
         $this->reportErrors = !!($options & STREAM_REPORT_ERRORS);
 
         if (!preg_match('/^blte:\/\/([\w\W]+)/i', $path, $res)) {
             return false;
         }
+        $filePath = $res[1];
+
+        // Make sure this is only opened as a binary write stream.
         switch ($mode) {
             case 'w':
             case 'x':
@@ -44,11 +107,13 @@ class BLTE
                 return false;
         }
 
-        $filePath = $res[1];
-
         $this->fileHandle = fopen($filePath, $mode, !!($options & STREAM_USE_PATH), $this->context);
         if ($this->fileHandle === false) {
             return false;
+        }
+
+        if ($options & STREAM_USE_PATH) {
+            $opened_path = $filePath;
         }
 
         $this->streamPosition = 0;
@@ -56,13 +121,16 @@ class BLTE
         return true;
     }
 
-    public function stream_close() {
-        $this->chunkObject = null; // destruct any chunk object
-
-        fclose($this->fileHandle);
-    }
-
-    public function stream_seek($offset, $whence) {
+    /**
+     * Try to move the cursor on the stream. We don't really allow it, so only return true when we don't actually move
+     * anything.
+     *
+     * @param int $offset
+     * @param int $whence
+     *
+     * @return bool
+     */
+    public function stream_seek(int $offset, int $whence = SEEK_SET): bool {
         switch ($whence) {
             case SEEK_SET:
                 return ($offset == $this->streamPosition);
@@ -72,48 +140,64 @@ class BLTE
                 return ($offset == 0);
                 break;
         }
+
         return false;
     }
 
-    public function stream_tell() {
-        return $this->streamPosition;
-    }
-
-    public function stream_eof() {
-        return true;
-    }
-
-    public function stream_stat() {
+    /**
+     * Return an array of available stats.
+     *
+     * @return array
+     */
+    public function stream_stat(): array {
         return [
-            'size' => $this->streamPosition
+            'size' => $this->streamPosition,
         ];
     }
 
-    public function stream_write($data) {
+    /**
+     * Returns how many BLTE-encoded bytes we've "written".
+     *
+     * @return int
+     */
+    public function stream_tell(): int {
+        return $this->streamPosition;
+    }
+
+    /**
+     * Write the given BLTE-encoded bytes to disk, decoded. Returns how many BLTE-encoded bytes were consumed (which is
+     * always all of them).
+     *
+     * @param string $data
+     *
+     * @return int
+     * @throws BLTE\Exception
+     */
+    public function stream_write(string $data): int {
         $writtenBytes = strlen($data);
         $this->rawBuf .= $data;
         $this->streamPosition += strlen($data);
 
-        if ($this->headerSize === false) {
+        if (is_null($this->headerSize)) {
             if ($this->streamPosition < 8) {
                 return $writtenBytes;
             }
             if (substr($this->rawBuf, 0, 4) !== 'BLTE') {
                 throw new BLTE\Exception("Stream is not BLTE encoded\n");
             }
-            $this->chunkOffset = $this->headerSize = current(unpack('N', substr($this->rawBuf, 4, 4)));
+            $this->chunkOffset = $this->headerSize = unpack('N', substr($this->rawBuf, 4, 4))[1];
             $this->rawBuf = substr($this->rawBuf, 8);
         }
         if (!$this->chunkCount) {
-            if ($this->headerSize == 0) {
+            if ($this->headerSize === 0) {
                 $this->chunkCount = 1;
                 $this->chunkInfo[] = ['encodedSize' => '*', 'id' => 0, 'chunkCount' => 1];
             } else {
                 if ($this->streamPosition < 12) {
                     return $writtenBytes;
                 }
-                $flags            = current(unpack('C', substr($this->rawBuf, 0, 1)));
-                $this->chunkCount = current(unpack('N', "\x00" . substr($this->rawBuf, 1, 3)));
+                $flags            = unpack('C', substr($this->rawBuf, 0, 1))[1];
+                $this->chunkCount = unpack('N', "\0" . substr($this->rawBuf, 1, 3))[1];
                 $this->rawBuf     = substr($this->rawBuf, 4);
 
                 if ($this->chunkCount <= 0) {
@@ -141,10 +225,9 @@ class BLTE
                 if (strlen($this->rawBuf) < 1) {
                     return $writtenBytes;
                 }
-                $this->chunkIndex++;
-                $this->chunkObject = BLTE\ChunkType::MakeChunk(
+                $this->chunkObject = BLTE\Chunk::MakeChunk(
                     substr($this->rawBuf, 0, 1),
-                    $this->chunkInfo[$this->chunkIndex],
+                    $this->chunkInfo[$this->chunkIndex++],
                     $this->fileHandle);
 
                 $this->rawBuf = substr($this->rawBuf, 1);
@@ -168,13 +251,42 @@ class BLTE
         return $writtenBytes;
     }
 
-    public function stream_flush() {
-        return fflush($this->fileHandle);
+    /**
+     * Return the encryption key for the given name. Null when not found.
+     *
+     * @param string $keyName
+     *
+     * @return string|null
+     */
+    public static function getEncryptionKey(string $keyName): ?string {
+        if (!static::$encryptionKeys) {
+            static::loadHardcodedEncryptionKeys();
+        }
+
+        return static::$encryptionKeys[$keyName] ?? null;
     }
 
-    private static function loadHardcodedEncryptionKeys() {
-        // see https://wowdev.wiki/TACT#World_of_Warcraft_2 for known keys
-        // note: keyname is reversed byte-wise, key is not
+    /**
+     * Load encryption keys into memory.
+     *
+     * @param string[] $keys
+     */
+    public static function loadEncryptionKeys(array $keys = []): void {
+        if (!static::$encryptionKeys) {
+            static::loadHardcodedEncryptionKeys();
+        }
+
+        foreach ($keys as $k => $v) {
+            static::$encryptionKeys[$k] = $v;
+        }
+    }
+
+    /**
+     * Loads a list of known encryption keys into memory. This should be updated periodically. See
+     * https://wowdev.wiki/TACT#World_of_Warcraft_2 for known keys.
+     */
+    private static function loadHardcodedEncryptionKeys(): void {
+        // Note: keyname is reversed byte-wise, key is not.
         $keys = [
             'FA505078126ACB3E' => 'BDC51862ABED79B2DE48C8E7E66C6200',
             'FF813F7D062AC0BC' => 'AA0B5C77F088CCC2D39049BD267F066D',
@@ -276,19 +388,5 @@ class BLTE
         foreach ($keys as $k => $v) {
             static::$encryptionKeys[strrev(hex2bin($k))] = hex2bin($v);
         }
-    }
-
-    public static function loadEncryptionKeys($keys = []) {
-        if (count(static::$encryptionKeys) == 0) {
-            static::loadHardcodedEncryptionKeys();
-        }
-
-        foreach ($keys as $k => $v) {
-            static::$encryptionKeys[$k] = $v;
-        }
-    }
-
-    public static function getEncryptionKey($keyName) {
-        return static::$encryptionKeys[$keyName] ?? false;
     }
 }

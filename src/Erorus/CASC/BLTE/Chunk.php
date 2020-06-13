@@ -2,7 +2,7 @@
 
 namespace Erorus\CASC\BLTE;
 
-abstract class ChunkType {
+abstract class Chunk {
     protected $fileHandle;
     protected $chunkIndex;
     protected $chunkCount;
@@ -14,11 +14,11 @@ abstract class ChunkType {
     public static function MakeChunk($typeByte, $chunkInfo, $fileHandle) {
         switch ($typeByte) {
             case 'N':
-                return new Plain($chunkInfo, $fileHandle);
+                return new Chunk\Plain($chunkInfo, $fileHandle);
             case 'Z':
-                return new Zlib($chunkInfo, $fileHandle);
+                return new Chunk\Zlib($chunkInfo, $fileHandle);
             case 'E':
-                return new Encrypted($chunkInfo, $fileHandle);
+                return new Chunk\Encrypted($chunkInfo, $fileHandle);
         }
 
         throw new \Exception(sprintf("Unsupported chunk type: %s\n", bin2hex($typeByte)));
