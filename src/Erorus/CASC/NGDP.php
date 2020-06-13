@@ -69,19 +69,19 @@ class NGDP {
         echo "\n";
 
         echo "Loading install..";
-        $installHeader = $this->encoding->GetHeaderHash(hex2bin($buildConfig->install[0]));
-        if (!$installHeader) {
+        $installContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->install[0]));
+        if (!$installContentMap) {
             throw new \Exception("Could not find install header in Encoding\n");
         }
-        $this->nameSources['Install'] = new Install($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($installHeader['headers'][0]));
+        $this->nameSources['Install'] = new Install($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($installContentMap->getEncodedHashes()[0]));
         echo "\n";
 
         echo "Loading root..";
-        $rootHeader = $this->encoding->GetHeaderHash(hex2bin($buildConfig->root[0]));
-        if (!$rootHeader) {
+        $rootContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->root[0]));
+        if (!$rootContentMap) {
             throw new \Exception("Could not find root header in Encoding\n");
         }
-        $this->nameSources['Root'] = new Root($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($rootHeader['headers'][0]), $locale);
+        $this->nameSources['Root'] = new Root($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($rootContentMap->getEncodedHashes()[0]), $locale);
         echo "\n";
 
         $cdnConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getCDNConfig());
@@ -116,19 +116,32 @@ class NGDP {
         return $contentHash;
     }
 
-    public function fetchFile($sourceId, $destPath, $locale = null) {
+    /**
+     * Extracts a file.
+     *
+     * @param string $sourceId Ideally a numeric file ID, also supports some filenames (e.g. from Install)
+     * @param string $destPath The filesystem path where to save the file. If it exists and matches our content hash,
+     *                         we can skip downloading/extracting it.
+     * @param string|null $locale The locale to use. Null to use the default locale.
+     *
+     * @return null|string Null on any failure. A string naming the data source on success. When
+     *                     DataSource::ignoreErrors is true, this will still return null even if errors were ignored and
+     *                     the file was updated.
+     */
+    public function fetchFile(string $sourceId, string $destPath, ?string $locale = null): ?string {
         if (!$this->ready) {
-            return false;
+            return null;
         }
 
         $sourceId = strtr($sourceId, ['/' => '\\']);
         $contentHash = $this->getContentHash($sourceId, $locale);
         if ($contentHash === false) {
-            return false;
+            return null;
         }
         if (file_exists($destPath) && md5_file($destPath, true) === $contentHash) {
             return 'Already Exists';
         }
+
         return $this->fetchContentHash($contentHash, $destPath);
     }
 
@@ -193,14 +206,22 @@ class NGDP {
         return $str;
     }
 
-    private function fetchContentHash($contentHash, $destPath) {
-        $headerHashes = $this->encoding->GetHeaderHash($contentHash);
-        if (!$headerHashes) {
-            return false;
+    /**
+     * Saves the given content hash to the given filesystem location.
+     *
+     * @param string $contentHash The content hash, in binary bytes.
+     * @param string $destPath Where to save the file.
+     *
+     * @return string|null Returns the name of the data source which provided it when successful, null on failure.
+     */
+    private function fetchContentHash(string $contentHash, string $destPath): ?string {
+        $contentMap = $this->encoding->getContentMap($contentHash);
+        if (!$contentMap) {
+            return null;
         }
 
         foreach ($this->dataSources as $dataSourceName => $dataSource) {
-            foreach ($headerHashes['headers'] as $hash) {
+            foreach ($contentMap->getEncodedHashes() as $hash) {
                 try {
                     if ($location = $dataSource->findHashInIndexes($hash)) {
                         if ($dataSource->extractFile($location, $destPath, $contentHash)) {
@@ -213,6 +234,6 @@ class NGDP {
             }
         }
 
-        return false;
+        return null;
     }
 }

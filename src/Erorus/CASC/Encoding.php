@@ -2,9 +2,12 @@
 
 namespace Erorus\CASC;
 
-class Encoding
-{
+use Erorus\CASC\Encoding\ContentMap;
 
+/**
+ * This is where we map content hashes to encoding hashes, which are themselves used as keys in the DataSource.
+ */
+class Encoding {
     private $entryMap = [];
     private $entryStart;
 
@@ -71,10 +74,17 @@ class Encoding
         fclose($this->fileHandle);
     }
 
-    public function GetHeaderHash($contentHash) {
+    /**
+     * Returns the content map for the given content hash. Returns null when none is found.
+     *
+     * @param string $contentHash The content hash in binary bytes.
+     *
+     * @return ContentMap|null
+     */
+    public function getContentMap(string $contentHash): ?ContentMap {
         $idx = $this->FindInMap($contentHash);
         if ($idx < 0) {
-            return false;
+            return null;
         }
 
         fseek($this->fileHandle, $this->entryStart + $idx * 4096);
@@ -82,13 +92,10 @@ class Encoding
         $block = $this->parseMapABlock(fread($this->fileHandle, 4096));
 
         if (isset($block[$contentHash])) {
-            return [
-                'size' => $block[$contentHash][0],
-                'headers' => $block[$contentHash][1],
-            ];
+            return new ContentMap($contentHash, $block[$contentHash][1], $block[$contentHash][0]);
         }
 
-        return false;
+        return null;
     }
 
     private function FindInMap($needle)

@@ -12,7 +12,7 @@ abstract class DataSource {
     abstract public function findHashInIndexes($hash);
     abstract protected function fetchFile($locationInfo, $destPath);
 
-    public function extractFile($locationInfo, $destPath, $contentHash = false) {
+    public function extractFile($locationInfo, string $destPath, ?string $contentHash = null): bool {
         $success = $this->fetchFile($locationInfo, $destPath);
 
         $success &= file_exists($destPath);
