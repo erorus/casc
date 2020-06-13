@@ -92,7 +92,11 @@ class Encoding {
         $block = $this->parseMapABlock(fread($this->fileHandle, 4096));
 
         if (isset($block[$contentHash])) {
-            return new ContentMap($contentHash, $block[$contentHash][1], $block[$contentHash][0]);
+            return new ContentMap([
+                'contentHash' => $contentHash,
+                'encodedHashes' => $block[$contentHash][1],
+                'fileSize' => $block[$contentHash][0],
+            ]);
         }
 
         return null;

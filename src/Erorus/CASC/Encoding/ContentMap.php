@@ -18,14 +18,15 @@ class ContentMap {
     /**
      * ContentMap constructor.
      *
-     * @param string $contentHash
-     * @param array $encodedHashes
-     * @param int $fileSize
+     * @param array $data
      */
-    public function __construct(string $contentHash, array $encodedHashes, int $fileSize) {
-        $this->contentHash = $contentHash;
-        $this->encodedHashes = $encodedHashes;
-        $this->fileSize = $fileSize;
+    public function __construct(array $data) {
+        $this->contentHash = (string)($data['contentHash'] ?? '');
+        $this->fileSize = (int)($data['fileSize'] ?? 0);
+        $this->encodedHashes = $data['encodedHashes'] ?? [];
+        if (!is_array($this->encodedHashes)) {
+            throw new \Exception("Invalid encodedHashes data.");
+        }
     }
 
     /**
