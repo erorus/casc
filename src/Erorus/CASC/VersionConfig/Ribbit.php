@@ -12,7 +12,7 @@ class Ribbit extends VersionConfig {
     const RIBBIT_PORT = 1119;
     const TIMEOUT = 10; // seconds
 
-    protected function getNGDPData($file) {
+    protected function getTACTData($file) {
         $cachePath = 'ribbit/' . $this->getProgram() . '/' . $file;
 
         $command = sprintf("v1/products/%s/%s\n", $this->getProgram(), $file);

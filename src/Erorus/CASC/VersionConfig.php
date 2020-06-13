@@ -49,6 +49,7 @@ abstract class VersionConfig {
 
         return $this->cdnPath;
     }
+
     public function getConfigPath() {
         if (!$this->configPath) {
             $this->getCDNs();
@@ -99,11 +100,11 @@ abstract class VersionConfig {
         return $this->cache->readPath($cachePath);
     }
 
-    abstract protected function getNGDPData($file);
+    abstract protected function getTACTData($file);
 
     private function getCDNs()
     {
-        $data = $this->getNGDPData('cdns');
+        $data = $this->getTACTData('cdns');
         if ( ! $data) {
             return;
         }
@@ -149,7 +150,7 @@ abstract class VersionConfig {
 
     private function getVersions()
     {
-        $data = $this->getNGDPData('versions');
+        $data = $this->getTACTData('versions');
         if ( ! $data) {
             return;
         }

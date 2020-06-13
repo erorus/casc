@@ -6,7 +6,7 @@ use Erorus\CASC\DataSource\Archive;
 use Erorus\CASC\DataSource\Index;
 use Erorus\CASC\NameLookup\Install;
 use Erorus\CASC\NameLookup\Root;
-use Erorus\CASC\VersionConfig\NGDP;
+use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
 use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
 
@@ -38,12 +38,12 @@ class CASC {
 
         $this->cache = new Cache($cachePath);
 
-        $ngdp = new NGDP($this->cache, $program, $region);
-        $hosts = $ngdp->getHosts();
+        $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
+        $hosts = $versionConfig->getHosts();
 
         $ribbit = new Ribbit($this->cache, $program, $region);
         if (count($ribbit->getHosts()) >= count($hosts)) {
-            $ngdp = $ribbit;
+            $versionConfig = $ribbit;
             $hosts = $ribbit->getHosts();
         }
 
@@ -51,9 +51,9 @@ class CASC {
             throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
         }
 
-        echo sprintf("%s %s version %s\n", $ngdp->getRegion(), $ngdp->getProgram(), $ngdp->getVersion());
+        echo sprintf("%s %s version %s\n", $versionConfig->getRegion(), $versionConfig->getProgram(), $versionConfig->getVersion());
 
-        $buildConfig = new Config($this->cache, $hosts, $ngdp->getCDNPath(), $ngdp->getBuildConfig());
+        $buildConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getBuildConfig());
         if (!isset($buildConfig->encoding[1])) {
             throw new \Exception("Could not find encoding value in build config\n");
         }
@@ -65,7 +65,7 @@ class CASC {
         }
 
         echo "Loading encoding..";
-        $this->encoding = new Encoding($this->cache, $hosts, $ngdp->getCDNPath(), $buildConfig->encoding[1]);
+        $this->encoding = new Encoding($this->cache, $hosts, $versionConfig->getCDNPath(), $buildConfig->encoding[1]);
         echo "\n";
 
         echo "Loading install..";
@@ -73,7 +73,7 @@ class CASC {
         if (!$installHeader) {
             throw new \Exception("Could not find install header in Encoding\n");
         }
-        $this->nameSources['Install'] = new Install($this->cache, $hosts, $ngdp->getCDNPath(), bin2hex($installHeader['headers'][0]));
+        $this->nameSources['Install'] = new Install($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($installHeader['headers'][0]));
         echo "\n";
 
         echo "Loading root..";
@@ -81,10 +81,10 @@ class CASC {
         if (!$rootHeader) {
             throw new \Exception("Could not find root header in Encoding\n");
         }
-        $this->nameSources['Root'] = new Root($this->cache, $hosts, $ngdp->getCDNPath(), bin2hex($rootHeader['headers'][0]), $locale);
+        $this->nameSources['Root'] = new Root($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($rootHeader['headers'][0]), $locale);
         echo "\n";
 
-        $cdnConfig = new Config($this->cache, $hosts, $ngdp->getCDNPath(), $ngdp->getCDNConfig());
+        $cdnConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getCDNConfig());
 
         if ($wowPath) {
             echo "Loading local indexes..";
@@ -93,7 +93,7 @@ class CASC {
         }
 
         echo "Loading remote indexes..";
-        $this->dataSources['Remote'] = new Archive($this->cache, $hosts, $ngdp->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
+        $this->dataSources['Remote'] = new Archive($this->cache, $hosts, $versionConfig->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
         echo "\n";
 
         $this->ready = true;
