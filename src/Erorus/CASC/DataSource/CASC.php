@@ -3,6 +3,7 @@
 namespace Erorus\CASC\DataSource;
 
 use Erorus\CASC\DataSource;
+use Erorus\CASC\DataSource\Location\CASC as CASCLocation;
 use Erorus\CASC\Util;
 
 class CASC extends DataSource {
@@ -41,18 +42,25 @@ class CASC extends DataSource {
         }
     }
 
-    public function findHashInIndexes($hash) {
+    /**
+     * Find a location in this data source for the given encoding hash. Null if not found.
+     *
+     * @param string $hash An encoding hash, in binary bytes.
+     *
+     * @return Location|null
+     */
+    public function findHashInIndexes(string $hash): ?Location {
         if (!$this->indexPath || !$this->files) {
-            return false;
+            return null;
         }
 
-        $result = false;
+        $result = null;
         foreach ($this->files as $fileInfo) {
-            $result = $this->findHashInIndex($fileInfo, $hash);
-            if ($result !== false) {
+            if ($result = $this->findHashInIndex($fileInfo, $hash)) {
                 break;
             }
         }
+
         return $result;
     }
 
@@ -88,7 +96,7 @@ class CASC extends DataSource {
         fclose($f);
     }
 
-    private function findHashInIndex($fileInfo, $hash) {
+    private function findHashInIndex($fileInfo, string $hash): ?CASCLocation {
         $needle = substr($hash, 0, $fileInfo['entryKey']);
 
         $f = fopen($this->indexPath . $fileInfo['name'], 'rb');
@@ -114,39 +122,52 @@ class CASC extends DataSource {
 
                 fclose($f);
 
-                return [
+                return new CascLocation([
                     'archive' => $archive,
                     'length' => $parts['size'],
                     'offset' => $offset,
                     'hash' => $needle,
-                ];
+                ]);
             }
         }
 
         fclose($f);
-        return false;
+
+        return null;
     }
 
-    protected function fetchFile($locationInfo, $destPath) {
-        $readPath = sprintf('%sdata.%03d', $this->indexPath, $locationInfo['archive']);
+    /**
+     * Given the location of some content in this data source, extract it to the given destination filesystem path.
+     *
+     * @param CASCLocation $locationInfo
+     * @param string $destPath
+     *
+     * @return bool Success
+     */
+    protected function fetchFile(Location $locationInfo, string $destPath): bool {
+        if (!is_a($locationInfo, CASCLocation::class)) {
+            throw new \Exception("Unexpected location info object type.");
+        }
+
+        $readPath = sprintf('%sdata.%03d', $this->indexPath, $locationInfo->archive);
         $readHandle = fopen($readPath, 'rb');
         if (!$readHandle) {
             throw new \Exception(sprintf("Unable to open %s for reading\n", $readPath));
         }
 
-        fseek($readHandle, $locationInfo['offset']);
+        fseek($readHandle, $locationInfo->offset);
 
         $hashReversed = fread($readHandle, 16);
         $hashConfirm = implode('', array_reverse(str_split($hashReversed)));
-        if (substr($hashConfirm, 0, strlen($locationInfo['hash'])) != $locationInfo['hash']) {
+        if (substr($hashConfirm, 0, strlen($locationInfo->hash)) != $locationInfo->hash) {
             fclose($readHandle);
-            throw new \Exception(sprintf("Data in local archive didn't match expected hash: %s vs %s\n", bin2hex($hashConfirm), bin2hex($locationInfo['hash'])));
+            throw new \Exception(sprintf("Data in local archive didn't match expected hash: %s vs %s\n", bin2hex($hashConfirm), bin2hex($locationInfo->hash)));
         }
 
         $sizeConfirm = current(unpack('V', fread($readHandle, 4)));
-        if ($sizeConfirm != $locationInfo['length']) {
+        if ($sizeConfirm != $locationInfo->length) {
             fclose($readHandle);
-            throw new \Exception(sprintf("Data in local archive didn't match expected size: %d vs %d\n", $sizeConfirm, $locationInfo['length']));
+            throw new \Exception(sprintf("Data in local archive didn't match expected size: %d vs %d\n", $sizeConfirm, $locationInfo->length));
         }
 
         fseek($readHandle, 10, SEEK_CUR);
@@ -162,7 +183,7 @@ class CASC extends DataSource {
             throw new \Exception(sprintf("Unable to open %s for writing\n", $writePath));
         }
 
-        $readLen = $locationInfo['length'] - 30;
+        $readLen = $locationInfo->length - 30;
         $pos = 0;
         while ($pos < $readLen) {
             $data = fread($readHandle, min(65536, $readLen - $pos));

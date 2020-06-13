@@ -5,6 +5,7 @@ namespace Erorus\CASC\DataSource;
 use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
 use Erorus\CASC\DataSource;
+use Erorus\CASC\DataSource\Location\TACT as TACTLocation;
 use Erorus\CASC\HTTP;
 use Erorus\CASC\Util;
 
@@ -24,8 +25,7 @@ class TACT extends DataSource {
     const LOCATION_CACHE = 1;
     const LOCATION_WOW = 2;
 
-    public function __construct(Cache $cache, $hosts, $cdnPath, $hashes, $wowPath = null)
-    {
+    public function __construct(Cache $cache, $hosts, $cdnPath, $hashes, $wowPath = null) {
         $this->cache = $cache;
         $this->hosts = $hosts;
         $this->cdnPath = $cdnPath;
@@ -55,12 +55,19 @@ class TACT extends DataSource {
         arsort($this->indexLocations);
     }
 
-    private static function buildCacheLocation($hash) {
+    private static function buildCacheLocation(string $hash): string {
         return 'data/' . $hash . '.index';
     }
 
-    public function findHashInIndexes($hash) {
-        $result = false;
+    /**
+     * Find a location in this data source for the given encoding hash. Null if not found.
+     *
+     * @param string $hash An encoding hash, in binary bytes.
+     *
+     * @return Location|null
+     */
+    public function findHashInIndexes(string $hash): ?Location {
+        $result = null;
         foreach ($this->indexLocations as $index => $location) {
             switch ($location) {
                 case static::LOCATION_WOW:
@@ -72,28 +79,33 @@ class TACT extends DataSource {
                 case static::LOCATION_NONE:
                     if ($this->fetchIndex($index)) {
                         $result = $this->findHashInIndex($index, $this->cache->getFullPath(static::buildCacheLocation($index)), $hash);
-                    } else {
-                        $result = false;
                     }
                     break;
             }
-            if ($result !== false) {
+            if ($result) {
                 break;
             }
         }
         if (!$result) {
             $result = $this->findHashOnCDN($hash);
         }
+
         return $result;
     }
 
-    private function findHashInIndex($indexHash, $indexPath, $hash)
-    {
+    /**
+     * @param string $indexHash
+     * @param string $indexPath
+     * @param string $hash
+     *
+     * @return TACTLocation|null
+     */
+    private function findHashInIndex(string $indexHash, string $indexPath, string $hash): ?TACTLocation {
         $f = false;
-        if ( ! isset($this->hashMapCache[$indexHash])) {
+        if (!isset($this->hashMapCache[$indexHash])) {
             $f = $this->populateIndexHashMapCache($indexHash, $indexPath);
             if ($f === false) {
-                return false;
+                return null;
             }
         }
 
@@ -102,7 +114,7 @@ class TACT extends DataSource {
             if ($f !== false) {
                 fclose($f);
             }
-            return false;
+            return null;
         }
 
         list($keySize, $blockSize) = $this->indexProperties[$indexHash];
@@ -114,7 +126,8 @@ class TACT extends DataSource {
         }
         if ($f === false) {
             fwrite(STDERR, "Could not open for reading $indexPath\n");
-            return false;
+
+            return null;
         }
         fseek($f, $x * $blockSize);
         for ($pos = 0; $pos < $blockSize; $pos += ($keySize + 8)) {
@@ -126,17 +139,17 @@ class TACT extends DataSource {
                 $entry = unpack('N*', fread($f, 8));
                 fclose($f);
 
-                return [
+                return new TACTLocation([
                     'archive' => $indexHash,
                     'length' => $entry[1],
                     'offset' => $entry[2],
-                ];
+                ]);
             }
             fseek($f, 8, SEEK_CUR);
         }
         fclose($f);
 
-        return false;
+        return null;
     }
 
     private function populateIndexHashMapCache($indexHash, $indexPath) {
@@ -270,30 +283,63 @@ class TACT extends DataSource {
         return true;
     }
 
-    private function findHashOnCDN($hash) {
+    /**
+     * Sometimes content won't be embedded in an archive file, and is fetched at its own URL. See if a file exists for
+     * the given encoding hash, and return it as a location if one does.
+     *
+     * @param string $hash A binary encoding hash.
+     *
+     * @return TACTLocation|null
+     * @throws \Exception
+     */
+    private function findHashOnCDN(string $hash): ?TACTLocation {
         $hash = bin2hex($hash);
         foreach ($this->hosts as $host) {
-            $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $this->cdnPath, substr($hash, 0, 2),
-                substr($hash, 2, 2), $hash);
+            $url = sprintf(
+                'http://%s/%s/data/%s/%s/%s',
+                $host,
+                $this->cdnPath,
+                substr($hash, 0, 2),
+                substr($hash, 2, 2),
+                $hash
+            );
 
             $headers = HTTP::Head($url);
             if ($headers['responseCode'] === 200) {
-                return ['archive' => $hash];
+                return new TACTLocation(['archive' => $hash]);
             }
         }
 
-        return false;
+        return null;
     }
 
-    protected function fetchFile($locationInfo, $destPath) {
+    /**
+     * Given the location of some content in this data source, extract it to the given destination filesystem path.
+     *
+     * @param TACTLocation $locationInfo
+     * @param string $destPath
+     *
+     * @return bool Success
+     */
+    protected function fetchFile(Location $locationInfo, string $destPath): bool {
+        if (!is_a($locationInfo, TACTLocation::class)) {
+            throw new \Exception("Unexpected location info object type.");
+        }
+
         if (!Util::assertParentDir($destPath, 'output')) {
             return false;
         }
 
-        $hash = $locationInfo['archive'];
+        $hash = $locationInfo->archive;
         foreach ($this->hosts as $host) {
-            $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $this->cdnPath, substr($hash, 0, 2),
-                substr($hash, 2, 2), $hash);
+            $url = sprintf(
+                'http://%s/%s/data/%s/%s/%s',
+                $host,
+                $this->cdnPath,
+                substr($hash, 0, 2),
+                substr($hash, 2, 2),
+                $hash
+            );
 
             $writePath = 'blte://' . $destPath;
             $writeHandle = fopen($writePath, 'wb');
@@ -301,8 +347,8 @@ class TACT extends DataSource {
                 throw new \Exception(sprintf("Unable to open %s for writing\n", $writePath));
             }
 
-            $range = isset($locationInfo['offset']) ? sprintf('%d-%d', $locationInfo['offset'],
-                $locationInfo['offset'] + $locationInfo['length'] - 1) : null;
+            $range = isset($locationInfo->offset) ? sprintf('%d-%d', $locationInfo->offset,
+                $locationInfo->offset + $locationInfo->length - 1) : null;
             try {
                 $success = HTTP::Get($url, $writeHandle, $range);
             } catch (BLTE\Exception $e) {
@@ -310,7 +356,7 @@ class TACT extends DataSource {
             }
 
             fclose($writeHandle);
-            if ( ! $success) {
+            if (!$success) {
                 unlink($destPath);
             } else {
                 break;
