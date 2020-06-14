@@ -45,11 +45,9 @@ This tool is still in development, though most of the basic stuff is complete. I
 
 Command line options and default functionality may change in later versions.
 
-Major parts that are still unfinished or untested:
-* Anything referenced in table B and the string block in Encoding
-
 Features that are not planned to be supported:
 * Patch archives (unnecessary since we aren't going to patch old files)
+* The Encoding specification table (only required for patching)
 * Background downloader files
 
 ## Disclaimer

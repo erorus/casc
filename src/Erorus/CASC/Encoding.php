@@ -8,13 +8,27 @@ use Erorus\CASC\Encoding\ContentMap;
  * This is where we map content hashes to encoding hashes, which are themselves used as keys in the DataSource.
  */
 class Encoding {
+    /** @var int How many bytes into a content table entry you find the start of the content hash. */
+    private const CONTENT_TABLE_ENTRY_CONTENT_HASH_OFFSET = 6;
+
+    /** @var int The number of bytes in a page index, excluding the size of the hash used for that table type. */
+    private const INDEX_ENTRY_DATA_LENGTH = 16;
+
+    /** @var string[] The first content hash in each content table page.  */
     private $entryMap = [];
+
+    /** @var int Where the content table data starts. */
     private $entryStart;
 
+    /** @var resource The file handle for the encoding cache file. */
     private $fileHandle;
+
+    /** @var int[] Various fields read from the header of the encoding file. */
     private $header;
 
     /**
+     * Fetches and parses the encoding file to map content hashes to encoding hashes.
+     *
      * @param Cache $cache A disk cache where we can find and store raw configs we download.
      * @param \Iterator $hosts Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
@@ -58,25 +72,51 @@ class Encoding {
             throw new \Exception("Encoding file did not have expected header\n");
         }
 
-        $this->header = unpack('Cunk/CchecksumSizeA/CchecksumSizeB/vflagsA/vflagsB/NnumEntriesA/NnumEntriesB', fread($f, 15));
-        $this->header['stringBlockSize'] = current(unpack('J', str_repeat(chr(0), 3) . fread($f, 5)));
+        $headerFormat = [
+            'Cversion',
+            'CcontentHashSize',
+            'CencodingHashSize',
+            'ncontentTableSizeKb',
+            'nencodingSpecTableSizeKb',
+            'NcontentTablePageCount',
+            'NencodingSpecTablePageCount',
+            'Cunk',
+            'NstringBlockSize',
+        ];
 
-        fseek($f, $this->header['stringBlockSize'], SEEK_CUR); // skip string block
-        fseek($f, 2 * $this->header['checksumSizeA'] * $this->header['numEntriesA'], SEEK_CUR); // skip encoding table header
+        $this->header = unpack(implode('/', $headerFormat), fread($f, 20));
 
+        // Skip string block, only used in encoding spec table.
+        fseek($f, $this->header['stringBlockSize'], SEEK_CUR);
+
+        // Skip content table index.
+        $indexEntrySize = $this->header['contentHashSize'] + self::INDEX_ENTRY_DATA_LENGTH;
+        fseek($f, $indexEntrySize * $this->header['contentTablePageCount'], SEEK_CUR);
+
+        // Remember where the data starts.
         $this->entryStart = ftell($f);
 
-        for ($x = 0; $x < $this->header['numEntriesA']; $x++) {
-            fseek($f, 6, SEEK_CUR);
-            $this->entryMap[] = fread($f, $this->header['checksumSizeA']);
-            fseek($f, 4096 - 6 - $this->header['checksumSizeA'], SEEK_CUR);
+        // Build our own index. Why don't we use the one we just skipped past? I don't know.
+        $pageSize = $this->header['contentTableSizeKb'] * 1024;
+        for ($x = 0; $x < $this->header['contentTablePageCount']; $x++) {
+            // Remember where we started this page.
+            $pageStart = ftell($f);
+
+            // Read the first content hash in this (first) entry of the page.
+            fseek($f, self::CONTENT_TABLE_ENTRY_CONTENT_HASH_OFFSET, SEEK_CUR);
+            $this->entryMap[] = fread($f, $this->header['contentHashSize']);
+
+            // Jump to the start of the next page.
+            fseek($f, $pageStart + $pageSize);
         }
 
         $this->fileHandle = $f;
     }
 
-    public function __destruct()
-    {
+    /**
+     * Closes the file handle when destructing the object.
+     */
+    public function __destruct() {
         fclose($this->fileHandle);
     }
 
@@ -88,28 +128,71 @@ class Encoding {
      * @return ContentMap|null
      */
     public function getContentMap(string $contentHash): ?ContentMap {
-        $idx = $this->FindInMap($contentHash);
+        $idx = $this->findInMap($contentHash);
         if ($idx < 0) {
             return null;
         }
 
-        fseek($this->fileHandle, $this->entryStart + $idx * 4096);
+        $pageSize = $this->header['contentTableSizeKb'] * 1024;
+        fseek($this->fileHandle, $this->entryStart + $idx * $pageSize);
 
-        $block = $this->parseMapABlock(fread($this->fileHandle, 4096));
+        return $this->findContentMapInPage($contentHash, fread($this->fileHandle, $pageSize));
+    }
 
-        if (isset($block[$contentHash])) {
-            return new ContentMap([
-                'contentHash' => $contentHash,
-                'encodedHashes' => $block[$contentHash][1],
-                'fileSize' => $block[$contentHash][0],
-            ]);
+    /**
+     * Return the content map for the given content hash found in the given page bytes, or null if not found.
+     *
+     * @param string $contentHash
+     * @param string $pageBytes
+     *
+     * @return ContentMap|null
+     */
+    private function findContentMapInPage(string $contentHash, string $pageBytes): ?ContentMap {
+        $pos = 0;
+        while ($pos < strlen($pageBytes)) {
+            $keyCount = ord(substr($pageBytes, $pos++, 1));
+            if ($keyCount == 0) {
+                break;
+            }
+
+            $fileSize = unpack('J', str_repeat(chr(0), 3) . substr($pageBytes, $pos, 5))[1];
+            $pos += 5;
+            if ($fileSize == 0) {
+                break;
+            }
+
+            $hash = substr($pageBytes, $pos, $this->header['contentHashSize']);
+            $pos += $this->header['contentHashSize'];
+
+            if ($hash === $contentHash) {
+                $encodedHashes = [];
+                for ($x = 0; $x < $keyCount; $x++) {
+                    $encodedHashes[] = substr($pageBytes, $pos, $this->header['encodingHashSize']);
+                    $pos += $this->header['encodingHashSize'];
+                }
+
+                return new ContentMap([
+                    'contentHash' => $contentHash,
+                    'encodedHashes' => $encodedHashes,
+                    'fileSize' => $fileSize,
+                ]);
+            } else {
+                $pos += $this->header['encodingHashSize'] * $keyCount;
+            }
         }
 
         return null;
     }
 
-    private function FindInMap($needle)
-    {
+    /**
+     * Return the page index which is likely to contain the content hash $needle. May return -1 if the hash comes before
+     * the first hash in the index.
+     *
+     * @param string $needle A content hash.
+     *
+     * @return int
+     */
+    private function findInMap(string $needle): int {
         $map = $this->entryMap;
 
         $lo = 0;
@@ -129,34 +212,4 @@ class Encoding {
 
         return $lo - 1;
     }
-
-    private function parseMapABlock($bytes) {
-        $checksumSize = $this->header['checksumSizeA'];
-        $block = [];
-
-        $pos = 0;
-        while ($pos < strlen($bytes)) {
-            $keyCount = ord(substr($bytes, $pos++, 1));
-            if ($keyCount == 0) {
-                break;
-            }
-            $fileSize = current(unpack('J', str_repeat(chr(0), 3) . substr($bytes, $pos, 5))); $pos += 5;
-            if ($fileSize == 0) {
-                break;
-            }
-
-            $hash = substr($bytes, $pos, $checksumSize);
-            $pos += $checksumSize;
-
-            $rec = [$fileSize, []];
-            for ($x = 0; $x < $keyCount; $x++) {
-                $rec[1][] = substr($bytes, $pos, $checksumSize);
-                $pos += $checksumSize;
-            }
-            $block[$hash] = $rec;
-        }
-
-        return $block;
-    }
-
 }
