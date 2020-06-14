@@ -29,7 +29,7 @@ class Encoding {
     /**
      * Fetches and parses the encoding file to map content hashes to encoding hashes.
      *
-     * @param Cache $cache A disk cache where we can find and store raw configs we download.
+     * @param Cache $cache A disk cache where we can find and store raw files we download.
      * @param \Iterator $hosts Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.

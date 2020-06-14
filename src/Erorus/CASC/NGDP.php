@@ -106,13 +106,14 @@ class NGDP {
         }
     }
 
-    public function getContentHash($file, $locale = null) {
-        $contentHash = false;
+    public function getContentHash(string $file, ?string $locale = null): ?string {
+        $contentHash = null;
         foreach ($this->nameSources as $nameSourceName => $nameSource) {
-            if ($contentHash = $nameSource->GetContentHash($file, $locale)) {
+            if ($contentHash = $nameSource->getContentHash($file, $locale)) {
                 break;
             }
         }
+
         return $contentHash;
     }
 
@@ -135,7 +136,7 @@ class NGDP {
 
         $sourceId = strtr($sourceId, ['/' => '\\']);
         $contentHash = $this->getContentHash($sourceId, $locale);
-        if ($contentHash === false) {
+        if (is_null($contentHash)) {
             return null;
         }
         if (file_exists($destPath) && md5_file($destPath, true) === $contentHash) {
@@ -157,7 +158,7 @@ class NGDP {
         $db2s = [];
 
         foreach ($files as $id => $path) {
-            $contentHash = $this->nameSources['Root']->GetContentHash($path, null);
+            $contentHash = $this->nameSources['Root']->getContentHash($path, null);
             if (!$contentHash) {
                 echo " Failed to find $id file\n";
                 return false;

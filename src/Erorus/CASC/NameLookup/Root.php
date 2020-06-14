@@ -93,7 +93,16 @@ class Root extends NameLookup
         fclose($this->fileHandle);
     }
 
-    public function GetContentHash($db2OrId, $locale) {
+    /**
+     * Given the name (including any path components) of a file, or the numeric file ID, return its content hash.
+     * Returns null when not found.
+     *
+     * @param string $nameOrId You'll likely need the numeric file ID to find its content hash.
+     * @param string|null $locale A key from self::LOCALE_FLAGS
+     *
+     * @return string|null A content hash, in binary bytes (not hex).
+     */
+    public function getContentHash(string $nameOrId, ?string $locale = null): ?string {
         if (is_null($locale) || !key_exists($locale, static::LOCALE_FLAGS)) {
             $locale = $this->defaultLocale;
         }
@@ -102,10 +111,10 @@ class Root extends NameLookup
         fseek($this->fileHandle, 0);
         $sig = fread($this->fileHandle, 4);
         if ($sig !== 'TSFM') {
-            return $this->GetContentHashFromLegacyRoot($db2OrId, $locale);
+            return $this->GetContentHashFromLegacyRoot($nameOrId, $locale);
         }
 
-        $hashedName = static::jenkins_hashlittle2(strtoupper($db2OrId));
+        $hashedName = static::jenkins_hashlittle2(strtoupper($nameOrId));
 
         list($countTotal, $countWithNameHash) = array_values(unpack('l*', fread($this->fileHandle, 8)));
         $countWithoutNameHash = $countTotal - $countWithNameHash;
@@ -188,8 +197,8 @@ class Root extends NameLookup
                 fseek($this->fileHandle, $numRec * $recLength, SEEK_CUR);
             }
 
-            if (isset($fileDataIds[$db2OrId])) {
-                return $fileDataIds[$db2OrId];
+            if (isset($fileDataIds[$nameOrId])) {
+                return $fileDataIds[$nameOrId];
             }
 
             if (isset($nameHashes[$hashedName])) {
