@@ -8,6 +8,7 @@ abstract class VersionConfig {
     private $region;
     private $program;
 
+    /** @var \Iterator CDN hostnames. */
     private $hosts = [];
     private $cdnPath = '';
     private $configPath = '';
