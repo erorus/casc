@@ -7,22 +7,31 @@ use Erorus\CASC\DataSource\Location\CASC as CASCLocation;
 use Erorus\CASC\Util;
 
 class CASC extends DataSource {
-    private $indexPath = false;
-    private $files = [];
+    /** @var array[] Various info read from the header of each valid index file.  */
+    private $indexHeaders = [];
 
-    public function __construct($wowPath)
-    {
+    /** @var string|null The full filesystem path where we find the data index files. */
+    private $indexPath = null;
+
+    /**
+     * Given a filesystem path to a World of Warcraft install, parses the index files to use it as a data source
+     * alternative to the CDN.
+     *
+     * @param string $wowPath
+     */
+    public function __construct(string $wowPath) {
         $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);
 
         $this->indexPath = sprintf('%2$s%1$sData%1$sdata', DIRECTORY_SEPARATOR, $wowPath);
         if (!is_dir($this->indexPath)) {
             fwrite(STDERR, sprintf("Could not find local indexes at %s\n", $this->indexPath));
-            $this->indexPath = false;
+            $this->indexPath = null;
             return;
         } else {
             $this->indexPath .= DIRECTORY_SEPARATOR;
         }
 
+        // Get the latest index files available on disk.
         $files = [];
         $idxes = glob($this->indexPath . '*.idx');
         foreach ($idxes as $idxFile) {
@@ -50,71 +59,34 @@ class CASC extends DataSource {
      * @return Location|null
      */
     public function findHashInIndexes(string $hash): ?Location {
-        if (!$this->indexPath || !$this->files) {
+        if (!$this->indexPath || !$this->indexHeaders) {
             return null;
         }
 
-        $result = null;
-        foreach ($this->files as $fileInfo) {
-            if ($result = $this->findHashInIndex($fileInfo, $hash)) {
-                break;
-            }
+        $bucket = self::getBucketForHash($hash);
+        if (!isset($this->indexHeaders[$bucket])) {
+            return null;
         }
 
-        return $result;
-    }
+        $headerInfo = $this->indexHeaders[$bucket];
+        $needle = substr($hash, 0, $headerInfo['entryKey']);
 
-    private function fetchIndexHeaders($fileName) {
-        $eof = filesize($this->indexPath . $fileName);
-        $f = fopen($this->indexPath . $fileName, 'rb');
-
-        $header = unpack('VheaderHashSize/VheaderHash/vunk0/Cbucket/Cunk1/CentrySize/CentryOffset/CentryKey/CarchiveFileHeader/ParchiveTotalSize/a8pad/VentriesSize/VentryHash', fread($f, 0x28));
-        $fail = false;
-        $fail |= $header['unk0'] != 7;
-        $fail |= $header['unk1'] != 0;
-        $fail |= $header['entrySize'] != 4;
-        $fail |= $header['entryOffset'] != 5;
-        $fail |= $header['entryKey'] != 9;
-        $fail |= $header['archiveFileHeader'] != 30;
-        if ($fail) {
-            fwrite(STDERR, sprintf("Expected constants in local index %s do not line up\n", $fileName));
-            fclose($f);
-            return;
-        }
-
-        $this->files[] = [
-            'name' => $fileName,
-            'eof' => $eof,
-            'entriesSize' => $header['entriesSize'],
-            'entriesStart' => 0x28,
-            'entryLength' => $header['entrySize'] + $header['entryOffset'] + $header['entryKey'],
-            'entryKey' => $header['entryKey'],
-            'entrySize' => $header['entrySize'],
-            'entryOffset' => $header['entryOffset'],
-        ];
-
-        fclose($f);
-    }
-
-    private function findHashInIndex($fileInfo, string $hash): ?CASCLocation {
-        $needle = substr($hash, 0, $fileInfo['entryKey']);
-
-        $f = fopen($this->indexPath . $fileInfo['name'], 'rb');
+        $f = fopen($this->indexPath . $headerInfo['name'], 'rb');
 
         $lo = 0;
-        $hi = floor(($fileInfo['entriesSize'] - $fileInfo['entriesStart']) / $fileInfo['entryLength']);
+        $hi = floor(($headerInfo['entriesSize'] - $headerInfo['entriesStart']) / $headerInfo['entryLength']);
 
         while ($lo <= $hi) {
             $mid = (int)(($hi - $lo) / 2) + $lo;
-            fseek($f, $fileInfo['entriesStart'] + $mid * $fileInfo['entryLength']);
-            $test = fread($f, $fileInfo['entryKey']);
+            fseek($f, $headerInfo['entriesStart'] + $mid * $headerInfo['entryLength']);
+            $test = fread($f, $headerInfo['entryKey']);
             $cmp = strcmp($test, $needle);
             if ($cmp < 0) {
                 $lo = $mid + 1;
             } elseif ($cmp > 0) {
                 $hi = $mid - 1;
             } else {
-                $parts = unpack('Coff1/Noff2/Vsize', fread($f, $fileInfo['entryOffset'] + $fileInfo['entrySize']));
+                $parts = unpack('Coff1/Noff2/Vsize', fread($f, $headerInfo['entryOffset'] + $headerInfo['entrySize']));
                 $combo = ($parts['off1'] << 32) | $parts['off2'];
 
                 $offset = $combo & 0x3fffffff;
@@ -205,5 +177,71 @@ class CASC extends DataSource {
         fclose($readHandle);
 
         return true;
+    }
+
+    /**
+     * Parses an index file header and caches its metadata in memory.
+     *
+     * @param string $fileName
+     */
+    private function fetchIndexHeaders(string $fileName): void {
+        $eof = filesize($this->indexPath . $fileName);
+        $f = fopen($this->indexPath . $fileName, 'rb');
+
+        $packedFormat = [
+            'VheaderHashSize',
+            'VheaderHash',
+            'vunk0',
+            'Cbucket',
+            'Cunk1',
+            'CentrySize',
+            'CentryOffset',
+            'CentryKey',
+            'CarchiveFileHeader',
+            'ParchiveTotalSize',
+            'a8pad',
+            'VentriesSize',
+            'VentryHash',
+        ];
+        $header = unpack(implode('/', $packedFormat), fread($f, 0x28));
+        $fail = false;
+        $fail |= $header['unk0'] !== 7;
+        $fail |= $header['unk1'] !== 0;
+        $fail |= $header['entrySize'] !== 4;
+        $fail |= $header['entryOffset'] !== 5;
+        $fail |= $header['entryKey'] !== 9;
+        $fail |= $header['archiveFileHeader'] !== 30;
+        if ($fail) {
+            fwrite(STDERR, sprintf("Expected constants in local index %s do not line up\n", $fileName));
+        } else {
+            $this->indexHeaders[$header['bucket']] = [
+                'name'         => $fileName,
+                'eof'          => $eof,
+                'entriesSize'  => $header['entriesSize'],
+                'entriesStart' => 0x28,
+                'entryLength'  => $header['entrySize'] + $header['entryOffset'] + $header['entryKey'],
+                'entryKey'     => $header['entryKey'],
+                'entrySize'    => $header['entrySize'],
+                'entryOffset'  => $header['entryOffset'],
+            ];
+        }
+
+        fclose($f);
+    }
+
+    /**
+     * Returns the bucket ID which identifies the index which should contain the location of the given encoding hash.
+     *
+     * @param string $hash
+     *
+     * @return int
+     */
+    private static function getBucketForHash(string $hash): int {
+        $byte = ord(substr($hash, 0, 1));
+        for ($x = 1; $x <= 8; $x++) {
+            $byte = $byte ^ ord(substr($hash, $x, 1));
+        }
+
+        return ($byte & 0xF) ^ ($byte >> 4);
     }
 }
