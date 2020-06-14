@@ -167,7 +167,7 @@ function printHelp($cachePath) {
 
     $me = $argv[0];
 
-    $locales = CASC\NameLookup\Root::LOCALE_FLAGS;
+    $locales = CASC\Manifest\Root::LOCALE_FLAGS;
     ksort($locales);
     $locales = implode(", ", array_keys($locales));
 

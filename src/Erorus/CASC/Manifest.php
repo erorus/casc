@@ -5,7 +5,7 @@ namespace Erorus\CASC;
 /**
  * This turns filenames (or, more often, numeric file IDs) into content hashes.
  */
-abstract class NameLookup {
+abstract class Manifest {
     /**
      * Given the name (including any path components) of a file, or the numeric file ID, return its content hash.
      * Returns null when not found.

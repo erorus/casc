@@ -4,8 +4,8 @@ namespace Erorus\CASC;
 
 use Erorus\CASC\DataSource\CASC;
 use Erorus\CASC\DataSource\TACT;
-use Erorus\CASC\NameLookup\Install;
-use Erorus\CASC\NameLookup\Root;
+use Erorus\CASC\Manifest\Install;
+use Erorus\CASC\Manifest\Root;
 use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
 use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
@@ -23,7 +23,7 @@ class NGDP {
     /** @var Encoding Where we convert content hashes into encoding hashes. Step 2/3. */
     private $encoding;
 
-    /** @var NameLookup[] Where we convert file names and IDs into content hashes. Step 1/3. */
+    /** @var Manifest[] Where we convert file names and IDs into content hashes. Step 1/3. */
     private $nameSources = [];
 
     /**
@@ -33,7 +33,7 @@ class NGDP {
      * @param string|null $wowPath A filesystem path to a WoW install which we can use as a data source.
      * @param string $program The TACT product code.
      * @param string $region The region, as defined in the version config column. One of: us, eu, cn, tw, kr
-     * @param string $locale The default locale we'll use to fetch assets. A key in NameLookup\Root::LOCALE_FLAGS
+     * @param string $locale The default locale we'll use to fetch assets. A key in Manifest\Root::LOCALE_FLAGS
      *
      * @throws \Exception
      */

@@ -1,18 +1,18 @@
 <?php
 
-namespace Erorus\CASC\NameLookup;
+namespace Erorus\CASC\Manifest;
 
 use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
 use Erorus\CASC\HTTP;
-use Erorus\CASC\NameLookup;
+use Erorus\CASC\Manifest;
 use Erorus\CASC\Util;
 use SplFixedArray;
 
 /**
  * This has the primary method we use to convert most file IDs into content hashes.
  */
-class Root extends NameLookup {
+class Root extends Manifest {
     /**
      * Maps locale names we gave to the flags that Blizzard uses.
      */
@@ -75,7 +75,7 @@ class Root extends NameLookup {
     private $useOldRecordFormat = false;
 
     /**
-     * Initializes our Root lookup by fetching (and caching) a single Root data file for this version.
+     * Initializes our Root manifest by fetching (and caching) a single Root data file for this version.
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.

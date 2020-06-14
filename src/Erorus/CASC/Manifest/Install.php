@@ -1,22 +1,25 @@
 <?php
 
-namespace Erorus\CASC\NameLookup;
+namespace Erorus\CASC\Manifest;
 
 use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
 use Erorus\CASC\HTTP;
-use Erorus\CASC\NameLookup;
+use Erorus\CASC\Manifest;
 use Erorus\CASC\Util;
 
 /**
  * The Install file gives us a lookup of some filenames to content hashes. Blizzard typically uses this to bootstrap
  * (hence the name "Install"), and the names available are limited, though there are some important ones (like wow.exe).
  */
-class Install extends NameLookup {
+class Install extends Manifest {
     /** @var string[] Content hashes, keyed by lowercase filename. */
     private $hashes = [];
 
     /**
+     * Initialize the Install manifest. The file is typically small so they're all read on instantiation and cached
+     * in memory.
+     *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
@@ -87,7 +90,7 @@ class Install extends NameLookup {
      * Given the name (including any path components) of a file, return its content hash. Returns null when not found.
      *
      * @param string $name
-     * @param string|null $locale The NameLookup class requires this parameter, though locales are not used here.
+     * @param string|null $locale The Manifest class requires this parameter, though locales are not used here.
      *
      * @return string|null A content hash, in binary bytes (not hex).
      */
