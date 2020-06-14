@@ -26,7 +26,7 @@ class Config {
             // Fetch it and cache it.
             foreach ($hosts as $host) {
                 $url = Util::buildTACTUrl($host, $cdnPath, 'config', $hash);
-                $data = HTTP::Get($url);
+                $data = HTTP::get($url);
 
                 if (!$data) {
                     continue;

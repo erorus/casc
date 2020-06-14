@@ -260,7 +260,7 @@ class TACT extends DataSource {
                 throw new \Exception("Cannot create write handle for index file at $cachePath\n");
             }
 
-            $success = HTTP::Get($url, $f);
+            $success = HTTP::get($url, $f);
 
             fclose($f);
 
@@ -295,7 +295,7 @@ class TACT extends DataSource {
     private function findHashOnCDN(string $hash): ?TACTLocation {
         $hash = bin2hex($hash);
         foreach ($this->hosts as $host) {
-            $headers = HTTP::Head(Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash));
+            $headers = HTTP::head(Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash));
             if ($headers['responseCode'] === 200) {
                 return new TACTLocation(['archive' => $hash]);
             }
@@ -334,7 +334,7 @@ class TACT extends DataSource {
             $range = isset($locationInfo->offset) ? sprintf('%d-%d', $locationInfo->offset,
                 $locationInfo->offset + $locationInfo->length - 1) : null;
             try {
-                $success = HTTP::Get($url, $writeHandle, $range);
+                $success = HTTP::get($url, $writeHandle, $range);
             } catch (BLTE\Exception $e) {
                 $success = false;
             }

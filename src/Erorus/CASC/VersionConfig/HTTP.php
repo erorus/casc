@@ -15,7 +15,7 @@ class HTTP extends VersionConfig {
         $data = $this->getCachedResponse($cachePath, static::MAX_CACHE_AGE);
         if (!$data) {
             $url  = sprintf('%s%s/%s', static::HTTP_HOST, $this->getProgram(), $file);
-            $data = CASCHTTP::Get($url);
+            $data = CASCHTTP::get($url);
             if (!$data) {
                 $data = $this->getCachedResponse($cachePath);
             } else {

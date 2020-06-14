@@ -154,7 +154,7 @@ function main()
 
     echo "\n";
     echo sprintf("%d file%s out of %d extracted successfully\n", $successCount, $successCount == 1 ? '' : 's', $totalCount);
-    $httpStats = CASC\HTTP::GetStats();
+    $httpStats = CASC\HTTP::getStats();
     echo sprintf("%d remote connection%s made for %d remote request%s\n",
         $httpStats['connections'], $httpStats['connections'] == 1 ? '' : 's',
         $httpStats['requests'], $httpStats['requests'] == 1 ? '' : 's');

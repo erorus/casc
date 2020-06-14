@@ -39,7 +39,7 @@ class Install extends NameLookup {
 
                 $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
                 try {
-                    $success = HTTP::Get($url, $f);
+                    $success = HTTP::get($url, $f);
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 }
