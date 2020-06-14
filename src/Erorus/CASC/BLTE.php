@@ -271,7 +271,7 @@ class BLTE {
      *
      * @param string[] $keys
      */
-    public static function loadEncryptionKeys(array $keys = []): void {
+    public static function loadEncryptionKeys(array $keys): void {
         if (!static::$encryptionKeys) {
             static::loadHardcodedEncryptionKeys();
         }

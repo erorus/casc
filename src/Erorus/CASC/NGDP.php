@@ -10,22 +10,22 @@ use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
 use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
 
+/**
+ * The main entry point of this library, you instantiate an NGDP object to extract files from CASC/TACT.
+ */
 class NGDP {
-    
-    /** @var Cache */
+    /** @var Cache Our class to manage our filesystem cache, shared by all parts of this app. */
     private $cache;
 
-    /** @var Encoding */
-    private $encoding;
-
-    /** @var NameLookup[] */
-    private $nameSources = [];
-
-    /** @var DataSource[] */
+    /** @var DataSource[] Where we convert encoding hashes to actual file data. Step 3/3. */
     private $dataSources = [];
 
-    private $ready = false;
-    
+    /** @var Encoding Where we convert content hashes into encoding hashes. Step 2/3. */
+    private $encoding;
+
+    /** @var NameLookup[] Where we convert file names and IDs into content hashes. Step 1/3. */
+    private $nameSources = [];
+
     public function __construct($cachePath, $wowPath, $program = 'wow', $region = 'us', $locale = 'enUS') {
         if (PHP_INT_MAX < 8589934590) {
             throw new \Exception("Requires 64-bit PHP");
@@ -38,11 +38,14 @@ class NGDP {
 
         $this->cache = new Cache($cachePath);
 
+        // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
+
         $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
         $hosts = $versionConfig->getHosts();
 
         $ribbit = new Ribbit($this->cache, $program, $region);
         if (count($ribbit->getHosts()) >= count($hosts)) {
+            // We prefer Ribbit results, as long as it has at least as many hostnames.
             $versionConfig = $ribbit;
             $hosts = $ribbit->getHosts();
         }
@@ -52,6 +55,8 @@ class NGDP {
         }
 
         echo sprintf("%s %s version %s\n", $versionConfig->getRegion(), $versionConfig->getProgram(), $versionConfig->getVersion());
+
+        // Step 1: Download the build config.
 
         $buildConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getBuildConfig());
         if (!isset($buildConfig->encoding[1])) {
@@ -96,25 +101,11 @@ class NGDP {
         $this->dataSources['Remote'] = new TACT($this->cache, $hosts, $versionConfig->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
         echo "\n";
 
-        $this->ready = true;
-
-        BLTE::loadEncryptionKeys(); // init static keys
         try {
             $this->fetchTactKey();
         } catch (\Exception $e) {
             echo " Failed: ", $e->getMessage(), "\n";
         }
-    }
-
-    public function getContentHash(string $file, ?string $locale = null): ?string {
-        $contentHash = null;
-        foreach ($this->nameSources as $nameSourceName => $nameSource) {
-            if ($contentHash = $nameSource->getContentHash($file, $locale)) {
-                break;
-            }
-        }
-
-        return $contentHash;
     }
 
     /**
@@ -130,10 +121,6 @@ class NGDP {
      *                     the file was updated.
      */
     public function fetchFile(string $sourceId, string $destPath, ?string $locale = null): ?string {
-        if (!$this->ready) {
-            return null;
-        }
-
         $sourceId = strtr($sourceId, ['/' => '\\']);
         $contentHash = $this->getContentHash($sourceId, $locale);
         if (is_null($contentHash)) {
@@ -146,7 +133,10 @@ class NGDP {
         return $this->fetchContentHash($contentHash, $destPath);
     }
 
-    private function fetchTactKey() {
+    /**
+     * Downloads the tactKey DB2 files and adds their keys to our list of known encryption keys.
+     */
+    private function fetchTactKey(): void {
         echo "Loading encryption keys..";
 
         $files = [
@@ -154,14 +144,28 @@ class NGDP {
             'tactKeyLookup' => 1302851,
         ];
 
+        /**
+         * Converts an array of numbers into a string of ascii characters.
+         *
+         * @param int[] $bytes
+         * @return string
+         */
+        $byteArrayToString = function (array $bytes): string {
+            $str = '';
+            for ($x = 0; $x < count($bytes); $x++) {
+                $str .= chr($bytes[$x]);
+            }
+
+            return $str;
+        };
+
         /** @var Reader[] $db2s */
         $db2s = [];
 
         foreach ($files as $id => $path) {
             $contentHash = $this->nameSources['Root']->getContentHash($path, null);
             if (!$contentHash) {
-                echo " Failed to find $id file\n";
-                return false;
+                throw new \Exception("Could not find $id file");
             }
 
             $cachePath = 'keys/' . bin2hex($contentHash);
@@ -171,8 +175,7 @@ class NGDP {
                 if (!$success) {
                     $this->cache->delete($cachePath);
 
-                    echo " Failed to fetch $id file\n";
-                    return false;
+                    throw new \Exception("Could not fetch $id file");
                 }
             }
 
@@ -181,8 +184,7 @@ class NGDP {
             } catch (\Exception $e) {
                 $this->cache->delete($cachePath);
 
-                echo " Failed to open $id file: " . $e->getMessage() . "\n";
-                return false;
+                throw new \Exception("Could not open $id file: " . $e->getMessage());
             }
         }
 
@@ -190,7 +192,7 @@ class NGDP {
         foreach ($db2s['tactKeyLookup']->generateRecords() as $id => $lookupRec) {
             $keyRec = $db2s['tactKey']->getRecord($id);
             if ($keyRec) {
-                $keys[static::byteArrayToString($lookupRec[0])] = static::byteArrayToString($keyRec[0]);
+                $keys[$byteArrayToString($lookupRec[0])] = $byteArrayToString($keyRec[0]);
             }
         }
 
@@ -199,16 +201,19 @@ class NGDP {
         echo sprintf(" OK (+%d)\n", count($keys));
     }
 
-    private static function byteArrayToString($bytes) {
-        $str = '';
-        for ($x = 0; $x < count($bytes); $x++) {
-            $str .= chr($bytes[$x]);
+    public function getContentHash(string $file, ?string $locale = null): ?string {
+        $contentHash = null;
+        foreach ($this->nameSources as $nameSourceName => $nameSource) {
+            if ($contentHash = $nameSource->getContentHash($file, $locale)) {
+                break;
+            }
         }
-        return $str;
+
+        return $contentHash;
     }
 
     /**
-     * Saves the given content hash to the given filesystem location.
+     * Saves the data for the given content hash to the given filesystem location.
      *
      * @param string $contentHash The content hash, in binary bytes.
      * @param string $destPath Where to save the file.
