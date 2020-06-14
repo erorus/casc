@@ -4,42 +4,91 @@ namespace Erorus\CASC;
 
 use Iterator;
 
+/**
+ * Fetches and manages CDN and version configuration data obtained from Ribbit (or legacy HTTP).
+ */
 abstract class VersionConfig {
-    const MAX_CACHE_AGE = 3600; // 1 hour
+    /** @var int To protect against querying Ribbit unnecessarily, we cache the responses and consider them fresh
+     *           for this many seconds after fetch.
+     */
+    protected const MAX_CACHE_AGE = 3600;
 
-    private $region;
+    /** @var Cache Our disk cache. */
+    protected $cache;
+
+    /** @var string The TACT product code. */
     private $program;
 
+    /** @var string The TACT region code. */
+    private $region;
+
+    /**** CDN Config Values ****/
+
+    /** @var string The path prefix component used when fetching assets from the CDN. */
     private $cdnPath = '';
-    private $configPath = '';
+
     /** @var Iterator CDN hostnames. */
     private $hosts = [];
+
     /** @var Iterator CDN hosts with protocols. */
     private $servers = [];
 
+    /**** Version Config Values ****/
+
+    /** @var string The hex file hash to download the build configuration for this version. */
     private $buildConfig = '';
+
+    /** @var string The hex file hash to download the CDN configuration for this version. */
     private $cdnConfig = '';
-    private $build = '';
+
+    /** @var string The full game version name represented by this config. e.g. "8.3.0.34601" */
     private $version = '';
 
-    protected $cache;
-
-    public function __construct(Cache $cache, $program='wow', $region='us') {
+    /**
+     * VersionConfig constructor.
+     *
+     * @param Cache $cache A disk cache where we can find and store raw files we download.
+     * @param string $program The TACT product code.
+     * @param string $region The region, as defined in the version config column. One of: us, eu, cn, tw, kr
+     */
+    public function __construct(Cache $cache, string $program = 'wow', string $region = 'us') {
         $this->cache = $cache;
 
         $this->program = strtolower($program);
         $this->region = strtolower($region);
     }
 
-    public function getProgram() {
+    /**
+     * @return string The TACT product code.
+     */
+    public function getProgram(): string {
         return $this->program;
     }
 
-    public function getRegion() {
+    /**
+     * @return string The region code.
+     */
+    public function getRegion(): string {
         return strtoupper($this->region);
     }
 
-    public function getHosts() {
+    /**** CDN Config ****/
+
+    /**
+     * @return string A path component, without leading or trailing slashes.
+     */
+    public function getCDNPath(): string {
+        if (!$this->cdnPath) {
+            $this->getCDNs();
+        }
+
+        return $this->cdnPath;
+    }
+
+    /**
+     * @return Iterator A list of CDN hostnames.
+     */
+    public function getHosts(): Iterator {
         if (!$this->hosts) {
             $this->getCDNs();
         }
@@ -47,6 +96,9 @@ abstract class VersionConfig {
         return $this->hosts;
     }
 
+    /**
+     * @return Iterator A list of CDN URL prefixes, e.g. ["http://cdn.example.com/"]
+     */
     public function getServers(): Iterator {
         if (!$this->servers) {
             $this->getCDNs();
@@ -55,23 +107,12 @@ abstract class VersionConfig {
         return $this->servers;
     }
 
-    public function getCDNPath() {
-        if (!$this->cdnPath) {
-            $this->getCDNs();
-        }
+    /**** Version Config ****/
 
-        return $this->cdnPath;
-    }
-
-    public function getConfigPath() {
-        if (!$this->configPath) {
-            $this->getCDNs();
-        }
-
-        return $this->configPath;
-    }
-
-    public function getBuildConfig() {
+    /**
+     * @return string The hex file hash to download the build configuration for this version.
+     */
+    public function getBuildConfig(): string {
         if (!$this->buildConfig) {
             $this->getVersions();
         }
@@ -79,7 +120,10 @@ abstract class VersionConfig {
         return $this->buildConfig;
     }
 
-    public function getCDNConfig() {
+    /**
+     * @return string The hex file hash to download the CDN configuration for this version.
+     */
+    public function getCDNConfig(): string {
         if (!$this->cdnConfig) {
             $this->getVersions();
         }
@@ -87,15 +131,10 @@ abstract class VersionConfig {
         return $this->cdnConfig;
     }
 
-    public function getBuild() {
-        if (!$this->build) {
-            $this->getVersions();
-        }
-
-        return $this->build;
-    }
-
-    public function getVersion() {
+    /**
+     * @return string The full game version name represented by this config. e.g. "8.3.0.34601"
+     */
+    public function getVersion(): string {
         if (!$this->version) {
             $this->getVersions();
         }
@@ -103,60 +142,51 @@ abstract class VersionConfig {
         return $this->version;
     }
 
-    protected function getCachedResponse($cachePath, $maxAge = false) {
+    /**
+     * Returns only a cached version config response, or null if no cached data is found.
+     *
+     * @param string $cachePath
+     * @param int|null $maxAge Returns null if the cached response is older than this amount of seconds.
+     *
+     * @return string|null
+     */
+    protected function getCachedResponse(string $cachePath, ?int $maxAge = null): ?string {
         if (!$this->cache->fileExists($cachePath)) {
-            return false;
+            return null;
         }
         if ($maxAge && $this->cache->fileModified($cachePath) < (time() - $maxAge)) {
-            return false;
+            return null;
         }
 
-        return $this->cache->read($cachePath) ?? false;
+        return $this->cache->read($cachePath);
     }
 
-    abstract protected function getTACTData($file);
+    /**
+     * Returns the content of a version config file at the given path, either from cache or by fetching it directly.
+     *
+     * @param string $file A product info file name, like "cdns" or "versions"
+     *
+     * @return string|null
+     */
+    abstract protected function getTACTData(string $file): ?string;
 
-    private function getCDNs()
-    {
-        $data = $this->getTACTData('cdns');
-        if (!$data) {
-            return;
-        }
-
-        $lines = preg_split('/[\r\n]+/', $data);
-        if (strpos($lines[0], '|') === false) {
-            return;
-        }
-        $cols = explode('|', strtolower($lines[0]));
-        $names = [];
-        foreach ($cols as $col) {
-            $name = $col;
-            if (($pos = strpos($name, '!')) !== false) {
-                $name = substr($name, 0, $pos);
-            }
-            $names[] = $name;
-        }
-
-        for ($x = 1; $x < count($lines); $x++) {
-            $vals = explode('|', $lines[$x]);
-            if (count($vals) != count($names)) {
-                continue;
-            }
-            $row = array_combine($names, $vals);
+    /**
+     * Fetches and parses the CDNs version file into the properties of this object.
+     */
+    private function getCDNs(): void {
+        foreach ($this->parseVersionCsv($this->getTACTData('cdns') ?? '') as $row) {
             if (!isset($row['name'])) {
                 continue;
             }
-            if ($row['name'] != $this->region) {
+            if ($row['name'] !== $this->region) {
                 continue;
             }
-            if (isset($row['path'])) {
-                $this->cdnPath = $row['path'];
-            }
-            if (isset($row['hosts'])) {
-                $this->hosts = new HostList(explode(' ', $row['hosts']));
-            }
+
+            $this->cdnPath = $row['path'] ?? '';
+            $this->hosts = new HostList(explode(' ', $row['hosts'] ?? ''));
+
+            $servers = [];
             if (isset($row['servers'])) {
-                $servers = [];
                 foreach (explode(' ', $row['servers']) as $url) {
                     // Strip off the querystring, which seems to be metadata packed into the URL instead of necessary.
                     if (($pos = strpos($url, '?')) !== false) {
@@ -169,31 +199,51 @@ abstract class VersionConfig {
 
                     $servers[] = $url;
                 };
-                $this->servers = new HostList($servers);
-            } elseif (isset($row['hosts'])) {
-                $servers = [];
-                foreach (explode(' ', $row['hosts']) as $host) {
+            } else {
+                foreach (explode(' ', $row['hosts'] ?? '') as $host) {
                     $servers[] = "http://{$host}/";
                 }
-                $this->servers = new HostList($servers);
             }
-            if (isset($row['configpath'])) {
-                $this->configPath = $row['configpath'];
-            }
+            $this->servers = new HostList($servers);
+
             break;
         }
     }
 
-    private function getVersions()
-    {
-        $data = $this->getTACTData('versions');
-        if (!$data) {
-            return;
+    /**
+     * Fetches and parses the Versions version file into the properties of this object.
+     */
+    private function getVersions(): void {
+        foreach ($this->parseVersionCsv($this->getTACTData('versions') ?? '') as $row) {
+            if (!isset($row['region'])) {
+                continue;
+            }
+            if ($row['region'] !== $this->region) {
+                continue;
+            }
+
+            $this->buildConfig = $row['buildconfig'] ?? '';
+            $this->cdnConfig = $row['cdnconfig'] ?? '';
+            $this->version = $row['versionsname'] ?? '';
+
+            break;
         }
+    }
+
+    /**
+     * Given Blizzard's special pipe-separated versions file data, returns it formatted into an array of rows, keyed
+     * by name.
+     *
+     * @param string $data
+     *
+     * @return array[]
+     */
+    private function parseVersionCsv(string $data): array {
+        $result = [];
 
         $lines = preg_split('/[\r\n]+/', $data);
         if (strpos($lines[0], '|') === false) {
-            return;
+            return [];
         }
         $cols = explode('|', strtolower($lines[0]));
         $names = [];
@@ -210,26 +260,9 @@ abstract class VersionConfig {
             if (count($vals) != count($names)) {
                 continue;
             }
-            $row = array_combine($names, $vals);
-            if (!isset($row['region'])) {
-                continue;
-            }
-            if ($row['region'] != $this->region) {
-                continue;
-            }
-            if (isset($row['buildconfig'])) {
-                $this->buildConfig = $row['buildconfig'];
-            }
-            if (isset($row['cdnconfig'])) {
-                $this->cdnConfig = $row['cdnconfig'];
-            }
-            if (isset($row['buildid'])) {
-                $this->build = $row['buildid'];
-            }
-            if (isset($row['versionsname'])) {
-                $this->version = $row['versionsname'];
-            }
-            break;
+            $result[] = array_combine($names, $vals);
         }
+
+        return $result;
     }
 }

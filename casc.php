@@ -26,7 +26,7 @@ function main()
 
     $dest = null;
     $cachePath = $defaultCachePath = (getHomeDir() ?? __DIR__) . DIRECTORY_SEPARATOR . '.casc-cache';
-    $wowPath = false;
+    $wowPath = null;
     $program = 'wow';
     $region = 'us';
     $locale = 'enUS';

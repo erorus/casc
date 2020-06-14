@@ -7,9 +7,16 @@ use Erorus\CASC\VersionConfig;
 
 class HTTP extends VersionConfig {
 
-    const HTTP_HOST = 'http://us.patch.battle.net:1119/';
+    private const HTTP_HOST = 'http://us.patch.battle.net:1119/';
 
-    protected function getTACTData($file) {
+    /**
+     * Returns the content of a version config file at the given path, either from cache or by fetching it directly.
+     *
+     * @param string $file A product info file name, like "cdns" or "versions"
+     *
+     * @return string|null
+     */
+    protected function getTACTData(string $file): ?string {
         $cachePath = 'http-versions/' . $this->getProgram() . '/' . $file;
 
         $data = $this->getCachedResponse($cachePath, static::MAX_CACHE_AGE);

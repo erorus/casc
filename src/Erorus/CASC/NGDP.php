@@ -26,7 +26,24 @@ class NGDP {
     /** @var NameLookup[] Where we convert file names and IDs into content hashes. Step 1/3. */
     private $nameSources = [];
 
-    public function __construct($cachePath, $wowPath, $program = 'wow', $region = 'us', $locale = 'enUS') {
+    /**
+     * NGDP constructor.
+     *
+     * @param string $cachePath A filesystem path where we can store cached fetch responses.
+     * @param string|null $wowPath A filesystem path to a WoW install which we can use as a data source.
+     * @param string $program The TACT product code.
+     * @param string $region The region, as defined in the version config column. One of: us, eu, cn, tw, kr
+     * @param string $locale The default locale we'll use to fetch assets. A key in NameLookup\Root::LOCALE_FLAGS
+     *
+     * @throws \Exception
+     */
+    public function __construct(
+        string $cachePath,
+        ?string $wowPath = null,
+        string $program = 'wow',
+        string $region = 'us',
+        string $locale = 'enUS'
+    ) {
         if (PHP_INT_MAX < 8589934590) {
             throw new \Exception("Requires 64-bit PHP");
         }

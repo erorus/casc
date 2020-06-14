@@ -8,11 +8,18 @@ use ZBateson\MailMimeParser\Message\Part\MessagePart;
 
 class Ribbit extends VersionConfig {
 
-    const RIBBIT_HOST = 'us.version.battle.net';
-    const RIBBIT_PORT = 1119;
-    const TIMEOUT = 10; // seconds
+    private const RIBBIT_HOST = 'us.version.battle.net';
+    private const RIBBIT_PORT = 1119;
+    private const TIMEOUT = 10; // seconds
 
-    protected function getTACTData($file) {
+    /**
+     * Returns the content of a version config file at the given path, either from cache or by fetching it directly.
+     *
+     * @param string $file A product info file name, like "cdns" or "versions"
+     *
+     * @return string|null
+     */
+    protected function getTACTData(string $file): ?string {
         $cachePath = 'ribbit/' . $this->getProgram() . '/' . $file;
 
         $command = sprintf("v1/products/%s/%s\n", $this->getProgram(), $file);
