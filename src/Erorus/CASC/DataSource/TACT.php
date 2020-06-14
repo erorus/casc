@@ -272,7 +272,7 @@ class TACT extends DataSource {
             try {
                 $success = HTTP::get($url, $f);
             } catch (\Exception $e) {
-                echo " - " . $e->getMessage() . "\n";
+                echo "\n - " . $e->getMessage() . "\n";
                 $success = false;
             }
 
@@ -353,7 +353,7 @@ class TACT extends DataSource {
                 $success = false;
             } catch (\Exception $e) {
                 $success = false;
-                echo " - " . $e->getMessage();
+                echo "\n - " . $e->getMessage() . " ";
             }
 
             fclose($writeHandle);

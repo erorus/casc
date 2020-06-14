@@ -33,16 +33,17 @@ class Encoding {
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
+     * @param bool $isBLTE Whether the file identified by $hash is BLTE-encoded.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, string $hash) {
+    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, string $hash, bool $isBLTE) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
         if (is_null($f)) {
             foreach ($servers as $server) {
-                $f = $cache->getWriteHandle($cachePath, true);
+                $f = $cache->getWriteHandle($cachePath, $isBLTE);
                 if (is_null($f)) {
                     throw new \Exception("Cannot create cache location for encoding data\n");
                 }
@@ -53,7 +54,7 @@ class Encoding {
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 } catch (\Exception $e) {
-                    echo " - " . $e->getMessage();
+                    echo "\n - " . $e->getMessage() . " ";
                     $success = false;
                 }
                 if (!$success) {

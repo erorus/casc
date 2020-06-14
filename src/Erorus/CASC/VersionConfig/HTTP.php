@@ -18,7 +18,7 @@ class HTTP extends VersionConfig {
             try {
                 $data = CASCHTTP::get($url);
             } catch (\Exception $e) {
-                echo " - " . $e->getMessage();
+                echo "\n - " . $e->getMessage() . " ";
                 $data = '';
             }
             if (!$data) {

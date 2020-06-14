@@ -40,6 +40,7 @@ class NGDP {
 
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
+        echo "Loading version config..";
         $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
         $ribbit = new Ribbit($this->cache, $program, $region);
         if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
@@ -52,13 +53,13 @@ class NGDP {
         }
 
         echo sprintf(
-            "%s %s version %s\n",
+            " %s %s version %s\n",
             $versionConfig->getRegion(),
             $versionConfig->getProgram(),
             $versionConfig->getVersion()
         );
 
-        // Step 1: Download the build config.
+        // Step 1: Download the build config, using the servers and file hash from version config.
 
         echo "Loading build config..";
         $buildConfig = new Config(
@@ -78,41 +79,79 @@ class NGDP {
         }
         echo "\n";
 
+        // Step 2: Downloading the encoding map, using the hash from the build config.
+        // The second encoding hash (index 1) is the BLTE-encoded version, which is pretty reliably on the CDN.
+        // The first encoding hash (index 0) would be for the decoded version, which often 404s.
+
         echo "Loading encoding..";
-        $this->encoding = new Encoding(
-            $this->cache,
-            $versionConfig->getServers(),
-            $versionConfig->getCDNPath(),
-            $buildConfig->encoding[1]
-        );
+        $this->encoding = null;
+        if (isset($buildConfig->encoding[1])) {
+            try {
+                $this->encoding = new Encoding(
+                    $this->cache,
+                    $versionConfig->getServers(),
+                    $versionConfig->getCDNPath(),
+                    $buildConfig->encoding[1],
+                    true
+                );
+            } catch (\Exception $e) {
+                $this->encoding = null;
+                echo " failed. Trying alternate..";
+            }
+        }
+        if (is_null($this->encoding)) {
+            $this->encoding = new Encoding(
+                $this->cache,
+                $versionConfig->getServers(),
+                $versionConfig->getCDNPath(),
+                $buildConfig->encoding[0],
+                false
+            );
+        }
         echo "\n";
 
+        // Step 3: Downloading the Install name source, allowing us to look up the content hash for it in Encoding.
+        // Like before, the second hash is the BLTE-encoded version, which is what ends up on the CDN. We can look it
+        // up from Encoding if it's not already present in the build config.
+
         echo "Loading install..";
-        $installContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->install[0]));
-        if (!$installContentMap) {
-            throw new \Exception("Could not find install header in Encoding\n");
+        $installContentHashHex = $buildConfig->install[1] ?? null;
+        if (is_null($installContentHashHex)) {
+            $installContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->install[0]));
+            if ( ! $installContentMap) {
+                throw new \Exception("Could not find install header in Encoding\n");
+            }
+            $installContentHashHex = bin2hex($installContentMap->getEncodedHashes()[0]);
         }
         $this->nameSources['Install'] = new Install(
             $this->cache,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
-            bin2hex($installContentMap->getEncodedHashes()[0])
+            $installContentHashHex
         );
         echo "\n";
 
+        // Step 4: Downloading the Root name source, getting the encoded content hash from Encoding.
+
         echo "Loading root..";
-        $rootContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->root[0]));
-        if (!$rootContentMap) {
-            throw new \Exception("Could not find root header in Encoding\n");
+        $rootContentHashHex = $buildConfig->root[1] ?? null;
+        if (is_null($rootContentHashHex)) {
+            $rootContentMap = $this->encoding->getContentMap(hex2bin($buildConfig->root[0]));
+            if (!$rootContentMap) {
+                throw new \Exception("Could not find root header in Encoding\n");
+            }
+            $rootContentHashHex = bin2hex($rootContentMap->getEncodedHashes()[0]);
         }
         $this->nameSources['Root'] = new Root(
             $this->cache,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
-            bin2hex($rootContentMap->getEncodedHashes()[0]),
+            $rootContentHashHex,
             $locale
         );
         echo "\n";
+
+        // Step 5: Downloading the CDN config, which lists all the TACT archives on the CDN.
 
         echo "Loading CDN config..";
         $cdnConfig = new Config(
@@ -123,11 +162,15 @@ class NGDP {
         );
         echo "\n";
 
+        // Step 6: Find the indexes available in the CASC archive for the local WoW install, if available.
+
         if ($wowPath) {
             echo "Loading local indexes..";
             $this->dataSources['Local'] = new CASC($wowPath);
             echo "\n";
         }
+
+        // Step 7: Initialize the TACT data source, feeding it a list of all the CDN archives and local WoW archives.
 
         echo "Loading remote indexes..";
         $this->dataSources['Remote'] = new TACT(
@@ -139,6 +182,8 @@ class NGDP {
         );
         echo "\n";
 
+        // Step 8: Try to download and parse WoW's TACT key DB2 file, so we're up-to-date on all the encryption keys.
+
         echo "Loading encryption keys..";
         try {
             $added = $this->fetchTactKey();
@@ -146,6 +191,8 @@ class NGDP {
         } catch (\Exception $e) {
             echo " Failed: ", $e->getMessage(), "\n";
         }
+
+        // We're finally ready to extract things.
     }
 
     /**
@@ -241,17 +288,6 @@ class NGDP {
         return count($keys);
     }
 
-    public function getContentHash(string $file, ?string $locale = null): ?string {
-        $contentHash = null;
-        foreach ($this->nameSources as $nameSourceName => $nameSource) {
-            if ($contentHash = $nameSource->getContentHash($file, $locale)) {
-                break;
-            }
-        }
-
-        return $contentHash;
-    }
-
     /**
      * Saves the data for the given content hash to the given filesystem location.
      *
@@ -281,5 +317,24 @@ class NGDP {
         }
 
         return null;
+    }
+
+    /**
+     * Query all our name sources for $file until we find one, returning its content hash.
+     *
+     * @param string $file
+     * @param string|null $locale
+     *
+     * @return string|null
+     */
+    private function getContentHash(string $file, ?string $locale = null): ?string {
+        $contentHash = null;
+        foreach ($this->nameSources as $nameSourceName => $nameSource) {
+            if ($contentHash = $nameSource->getContentHash($file, $locale)) {
+                break;
+            }
+        }
+
+        return $contentHash;
     }
 }

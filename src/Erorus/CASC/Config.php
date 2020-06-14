@@ -30,7 +30,7 @@ class Config {
                     $data = HTTP::get($url);
                 } catch (\Exception $e) {
                     $data = '';
-                    echo " - " . $e->getMessage();
+                    echo "\n - " . $e->getMessage() . " ";
                 }
 
                 if (!$data) {

@@ -41,7 +41,7 @@ class Install extends NameLookup {
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 } catch (\Exception $e) {
-                    echo " - " . $e->getMessage();
+                    echo "\n - " . $e->getMessage() . " ";
                     $success = false;
                 }
                 if (!$success) {
