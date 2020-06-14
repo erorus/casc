@@ -6,6 +6,7 @@ use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
 use Erorus\CASC\HTTP;
 use Erorus\CASC\NameLookup;
+use Erorus\CASC\Util;
 
 class Install extends NameLookup {
     private $hashes = [];
@@ -22,14 +23,13 @@ class Install extends NameLookup {
                     throw new \Exception("Cannot create cache location for install data\n");
                 }
 
-                $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
-                    substr($hash, 2, 2), $hash);
+                $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
                 try {
                     $success = HTTP::Get($url, $f);
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 }
-                if ( ! $success) {
+                if (!$success) {
                     fclose($f);
                     $cache->delete($cachePath);
                     continue;
@@ -38,7 +38,7 @@ class Install extends NameLookup {
                 $f = $cache->getReadHandle($cachePath);
                 break;
             }
-            if ( ! $success) {
+            if (!$success) {
                 throw new \Exception("Could not fetch install data at $url\n");
             }
         }

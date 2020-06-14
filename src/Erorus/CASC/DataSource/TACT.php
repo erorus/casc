@@ -253,7 +253,7 @@ class TACT extends DataSource {
         HTTP::$writeProgressToStream = null;
         $success = false;
         foreach ($this->hosts as $host) {
-            $url = sprintf('http://%s/%s/data/%s/%s/%s.index', $host, $this->cdnPath, substr($hash, 0, 2), substr($hash, 2, 2), $hash);
+            $url = Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash) . '.index';
 
             $f = $this->cache->getWriteHandle($cachePath);
             if (is_null($f)) {
@@ -264,7 +264,7 @@ class TACT extends DataSource {
 
             fclose($f);
 
-            if ( ! $success) {
+            if (!$success) {
                 $this->cache->delete($cachePath);
             } else {
                 break;
@@ -274,7 +274,7 @@ class TACT extends DataSource {
         HTTP::$writeProgressToStream = $oldProgressOutput;
         echo "\x1B[K";
 
-        if ( ! $success) {
+        if (!$success) {
             return false;
         }
 
@@ -295,16 +295,7 @@ class TACT extends DataSource {
     private function findHashOnCDN(string $hash): ?TACTLocation {
         $hash = bin2hex($hash);
         foreach ($this->hosts as $host) {
-            $url = sprintf(
-                'http://%s/%s/data/%s/%s/%s',
-                $host,
-                $this->cdnPath,
-                substr($hash, 0, 2),
-                substr($hash, 2, 2),
-                $hash
-            );
-
-            $headers = HTTP::Head($url);
+            $headers = HTTP::Head(Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash));
             if ($headers['responseCode'] === 200) {
                 return new TACTLocation(['archive' => $hash]);
             }
@@ -332,14 +323,7 @@ class TACT extends DataSource {
 
         $hash = $locationInfo->archive;
         foreach ($this->hosts as $host) {
-            $url = sprintf(
-                'http://%s/%s/data/%s/%s/%s',
-                $host,
-                $this->cdnPath,
-                substr($hash, 0, 2),
-                substr($hash, 2, 2),
-                $hash
-            );
+            $url = Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash);
 
             $writePath = 'blte://' . $destPath;
             $writeHandle = fopen($writePath, 'wb');

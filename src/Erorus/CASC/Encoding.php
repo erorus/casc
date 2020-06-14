@@ -14,8 +14,15 @@ class Encoding {
     private $fileHandle;
     private $header;
 
-    public function __construct(Cache $cache, $hosts, $cdnPath, $hash)
-    {
+    /**
+     * @param Cache $cache A disk cache where we can find and store raw configs we download.
+     * @param \Iterator $hosts Typically a HostList, or an array. CDN hostnames.
+     * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
+     * @param string $hash The hex hash string for the file to read.
+     *
+     * @throws \Exception
+     */
+    public function __construct(Cache $cache, \Iterator $hosts, string $cdnPath, string $hash) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
@@ -26,14 +33,13 @@ class Encoding {
                     throw new \Exception("Cannot create cache location for encoding data\n");
                 }
 
-                $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
-                    substr($hash, 2, 2), $hash);
+                $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
                 try {
                     $success = HTTP::Get($url, $f);
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 }
-                if ( ! $success) {
+                if (!$success) {
                     fclose($f);
                     $cache->delete($cachePath);
                     continue;
@@ -42,7 +48,7 @@ class Encoding {
                 $f = $cache->getReadHandle($cachePath);
                 break;
             }
-            if ( ! $success) {
+            if (!$success) {
                 throw new \Exception("Could not fetch encoding data at $url\n");
             }
         }

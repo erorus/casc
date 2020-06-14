@@ -25,14 +25,7 @@ class Config {
         if (is_null($data)) {
             // Fetch it and cache it.
             foreach ($hosts as $host) {
-                $url = sprintf(
-                    'http://%s/%s/config/%s/%s/%s',
-                    $host,
-                    $cdnPath,
-                    substr($hash, 0, 2),
-                    substr($hash, 2, 2),
-                    $hash
-                );
+                $url = Util::buildTACTUrl($host, $cdnPath, 'config', $hash);
                 $data = HTTP::Get($url);
 
                 if (!$data) {

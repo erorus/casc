@@ -47,7 +47,7 @@ class NGDP {
             $hosts = $ribbit->getHosts();
         }
 
-        if ( ! count($hosts)) {
+        if (!count($hosts)) {
             throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
         }
 

@@ -2,8 +2,19 @@
 
 namespace Erorus\CASC;
 
+/**
+ * Miscellaneous standalone utility functions.
+ */
 class Util {
-    public static function assertParentDir($fullPath, $type) {
+    /**
+     * Given a filesystem path, make sure the parent directory of that path exists and is writable.
+     *
+     * @param string $fullPath
+     * @param string $type The "type" of directory you're trying to use. Only used in error messages.
+     *
+     * @return bool True when everything is okay, false on error.
+     */
+    public static function assertParentDir(string $fullPath, string $type): bool {
         $parentDir = dirname($fullPath);
         if (!is_dir($parentDir)) {
             if (!mkdir($parentDir, 0755, true)) {
@@ -16,5 +27,29 @@ class Util {
         }
 
         return true;
+    }
+
+    /**
+     * @param string $host     A hostname.
+     * @param string $cdnPath  A product-specific path component from the versionConfig where we get these assets.
+     * @param string $pathType "config" or "data", typically "data".
+     * @param string $hash     A hex-encoded hash of the file you're trying to fetch.
+     *
+     * @return string
+     */
+    public static function buildTACTUrl(string $host, string $cdnPath, string $pathType, string $hash): string {
+        if (preg_match('/[^0-9a-f]/', $hash)) {
+            throw new \Exception("Invalid hash format: expected lowercase hex!");
+        }
+
+        return sprintf(
+            'http://%s/%s/%s/%s/%s/%s',
+            $host,
+            $cdnPath,
+            $pathType,
+            substr($hash, 0, 2),
+            substr($hash, 2, 2),
+            $hash
+        );
     }
 }

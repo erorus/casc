@@ -6,6 +6,7 @@ use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
 use Erorus\CASC\HTTP;
 use Erorus\CASC\NameLookup;
+use Erorus\CASC\Util;
 
 class Root extends NameLookup
 {
@@ -62,14 +63,13 @@ class Root extends NameLookup
                     throw new \Exception("Cannot create temp buffer for root data\n");
                 }
 
-                $url = sprintf('http://%s/%s/data/%s/%s/%s', $host, $cdnPath, substr($hash, 0, 2),
-                    substr($hash, 2, 2), $hash);
+                $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
                 try {
                     $success = HTTP::Get($url, $f);
                 } catch (BLTE\Exception $e) {
                     $success = false;
                 }
-                if ( ! $success) {
+                if (!$success) {
                     fclose($f);
                     $cache->delete($cachePath);
                     continue;
@@ -78,7 +78,7 @@ class Root extends NameLookup
                 $f = $cache->getReadHandle($cachePath);
                 break;
             }
-            if ( ! $success) {
+            if (!$success) {
                 throw new \Exception("Could not fetch root data at $url\n");
             }
         }
@@ -129,7 +129,7 @@ class Root extends NameLookup
                 fseek($this->fileHandle, $numRec * $recLength, SEEK_CUR);
                 continue;
             }
-            if ( ! isset($this->blockCache[$blockId])) {
+            if (!isset($this->blockCache[$blockId])) {
                 $fileDataIds = [];
                 $nameHashes = [];
 

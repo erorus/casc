@@ -97,7 +97,7 @@ function main()
 
     if ($wowPath) {
         $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);
-        if ( ! is_dir($wowPath)) {
+        if (!is_dir($wowPath)) {
             echo "WoW directory $wowPath is not found, aborting.\n";
             return 1;
         }

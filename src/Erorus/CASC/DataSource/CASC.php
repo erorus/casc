@@ -15,7 +15,7 @@ class CASC extends DataSource {
         $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);
 
         $this->indexPath = sprintf('%2$s%1$sData%1$sdata', DIRECTORY_SEPARATOR, $wowPath);
-        if ( ! is_dir($this->indexPath)) {
+        if (!is_dir($this->indexPath)) {
             fwrite(STDERR, sprintf("Could not find local indexes at %s\n", $this->indexPath));
             $this->indexPath = false;
             return;
@@ -27,12 +27,12 @@ class CASC extends DataSource {
         $idxes = glob($this->indexPath . '*.idx');
         foreach ($idxes as $idxFile) {
             $idxFile = basename($idxFile);
-            if ( ! preg_match('/^[0-9a-f]{10}\.idx$/', $idxFile)) {
+            if (!preg_match('/^[0-9a-f]{10}\.idx$/', $idxFile)) {
                 continue;
             }
             $x   = hexdec(substr($idxFile, 0, 2));
             $ver = hexdec(substr($idxFile, 2, 8));
-            if ( ! isset($files[$x]) || $files[$x] < $ver) {
+            if (!isset($files[$x]) || $files[$x] < $ver) {
                 $files[$x] = $ver;
             }
         }

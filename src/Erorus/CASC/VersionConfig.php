@@ -106,7 +106,7 @@ abstract class VersionConfig {
     private function getCDNs()
     {
         $data = $this->getTACTData('cdns');
-        if ( ! $data) {
+        if (!$data) {
             return;
         }
 
@@ -152,7 +152,7 @@ abstract class VersionConfig {
     private function getVersions()
     {
         $data = $this->getTACTData('versions');
-        if ( ! $data) {
+        if (!$data) {
             return;
         }
 
