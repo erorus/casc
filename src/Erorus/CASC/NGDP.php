@@ -41,24 +41,32 @@ class NGDP {
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
         $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
-        $hosts = $versionConfig->getHosts();
-
         $ribbit = new Ribbit($this->cache, $program, $region);
-        if (count($ribbit->getHosts()) >= count($hosts)) {
+        if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
             // We prefer Ribbit results, as long as it has at least as many hostnames.
             $versionConfig = $ribbit;
-            $hosts = $ribbit->getHosts();
         }
 
-        if (!count($hosts)) {
-            throw new \Exception(sprintf("No hosts returned from NGDP for program '%s' region '%s'\n", $program, $region));
+        if (!count($versionConfig->getHosts())) {
+            throw new \Exception(sprintf("No hosts from NGDP for program '%s' region '%s'\n", $program, $region));
         }
 
-        echo sprintf("%s %s version %s\n", $versionConfig->getRegion(), $versionConfig->getProgram(), $versionConfig->getVersion());
+        echo sprintf(
+            "%s %s version %s\n",
+            $versionConfig->getRegion(),
+            $versionConfig->getProgram(),
+            $versionConfig->getVersion()
+        );
 
         // Step 1: Download the build config.
 
-        $buildConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getBuildConfig());
+        echo "Loading build config..";
+        $buildConfig = new Config(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            $versionConfig->getBuildConfig()
+        );
         if (!isset($buildConfig->encoding[1])) {
             throw new \Exception("Could not find encoding value in build config\n");
         }
@@ -68,9 +76,15 @@ class NGDP {
         if (!isset($buildConfig->install[0])) {
             throw new \Exception("Could not find install value in build config\n");
         }
+        echo "\n";
 
         echo "Loading encoding..";
-        $this->encoding = new Encoding($this->cache, $hosts, $versionConfig->getCDNPath(), $buildConfig->encoding[1]);
+        $this->encoding = new Encoding(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            $buildConfig->encoding[1]
+        );
         echo "\n";
 
         echo "Loading install..";
@@ -78,7 +92,12 @@ class NGDP {
         if (!$installContentMap) {
             throw new \Exception("Could not find install header in Encoding\n");
         }
-        $this->nameSources['Install'] = new Install($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($installContentMap->getEncodedHashes()[0]));
+        $this->nameSources['Install'] = new Install(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            bin2hex($installContentMap->getEncodedHashes()[0])
+        );
         echo "\n";
 
         echo "Loading root..";
@@ -86,10 +105,23 @@ class NGDP {
         if (!$rootContentMap) {
             throw new \Exception("Could not find root header in Encoding\n");
         }
-        $this->nameSources['Root'] = new Root($this->cache, $hosts, $versionConfig->getCDNPath(), bin2hex($rootContentMap->getEncodedHashes()[0]), $locale);
+        $this->nameSources['Root'] = new Root(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            bin2hex($rootContentMap->getEncodedHashes()[0]),
+            $locale
+        );
         echo "\n";
 
-        $cdnConfig = new Config($this->cache, $hosts, $versionConfig->getCDNPath(), $versionConfig->getCDNConfig());
+        echo "Loading CDN config..";
+        $cdnConfig = new Config(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            $versionConfig->getCDNConfig()
+        );
+        echo "\n";
 
         if ($wowPath) {
             echo "Loading local indexes..";
@@ -98,11 +130,19 @@ class NGDP {
         }
 
         echo "Loading remote indexes..";
-        $this->dataSources['Remote'] = new TACT($this->cache, $hosts, $versionConfig->getCDNPath(), $cdnConfig->archives, $wowPath ? $wowPath : null);
+        $this->dataSources['Remote'] = new TACT(
+            $this->cache,
+            $versionConfig->getServers(),
+            $versionConfig->getCDNPath(),
+            $cdnConfig->archives,
+            $wowPath ?: null
+        );
         echo "\n";
 
+        echo "Loading encryption keys..";
         try {
-            $this->fetchTactKey();
+            $added = $this->fetchTactKey();
+            echo sprintf(" OK (+%d)\n", $added);
         } catch (\Exception $e) {
             echo " Failed: ", $e->getMessage(), "\n";
         }
@@ -135,10 +175,10 @@ class NGDP {
 
     /**
      * Downloads the tactKey DB2 files and adds their keys to our list of known encryption keys.
+     *
+     * @return int How many keys we added.
      */
-    private function fetchTactKey(): void {
-        echo "Loading encryption keys..";
-
+    private function fetchTactKey(): int {
         $files = [
             'tactKey' => 1302850,
             'tactKeyLookup' => 1302851,
@@ -198,7 +238,7 @@ class NGDP {
 
         BLTE::loadEncryptionKeys($keys);
 
-        echo sprintf(" OK (+%d)\n", count($keys));
+        return count($keys);
     }
 
     public function getContentHash(string $file, ?string $locale = null): ?string {

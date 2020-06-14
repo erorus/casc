@@ -97,6 +97,8 @@ class HTTP {
             CURLOPT_SSLVERSION     => 6, //CURL_SSLVERSION_TLSv1_2,
             CURLOPT_CONNECTTIMEOUT => 6,
             CURLOPT_ENCODING       => 'gzip',
+            CURLOPT_LOW_SPEED_LIMIT => 50 * 1024,
+            CURLOPT_LOW_SPEED_TIME => 20,
         ]);
         if (!is_null($fileHandle)) {
             curl_setopt($ch, CURLOPT_FILE, $fileHandle);

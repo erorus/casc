@@ -8,8 +8,7 @@ use Erorus\CASC\HTTP;
 use Erorus\CASC\NameLookup;
 use Erorus\CASC\Util;
 
-class Root extends NameLookup
-{
+class Root extends NameLookup {
     const LOCALE_FLAGS = [
         'enUS' => 0x2,
         'koKR' => 0x4,
@@ -45,8 +44,22 @@ class Root extends NameLookup
     private $fileHandle;
     private $fileSize;
 
-    public function __construct(Cache $cache, $hosts, $cdnPath, $hash, $defaultLocale = 'enUS')
-    {
+    /**
+     * @param Cache $cache A disk cache where we can find and store raw files we download.
+     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
+     * @param string $hash The hex hash string for the file to read.
+     * @param string $defaultLocale One of the keys in self::LOCALE_FLAGS.
+     *
+     * @throws \Exception
+     */
+    public function __construct(
+        Cache $cache,
+        \Iterator $servers,
+        string $cdnPath,
+        string $hash,
+        string $defaultLocale = 'enUS'
+    ) {
         if (!key_exists($defaultLocale, static::LOCALE_FLAGS)) {
             throw new \Exception("Locale $defaultLocale is not supported\n");
         }
@@ -57,16 +70,19 @@ class Root extends NameLookup
 
         $f = $cache->getReadHandle($cachePath);
         if (is_null($f)) {
-            foreach ($hosts as $host) {
+            foreach ($servers as $server) {
                 $f = $cache->getWriteHandle($cachePath, true);
                 if (is_null($f)) {
                     throw new \Exception("Cannot create temp buffer for root data\n");
                 }
 
-                $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
+                $url = Util::buildTACTUrl($server, $cdnPath, 'data', $hash);
                 try {
                     $success = HTTP::get($url, $f);
                 } catch (BLTE\Exception $e) {
+                    $success = false;
+                } catch (\Exception $e) {
+                    echo " - " . $e->getMessage();
                     $success = false;
                 }
                 if (!$success) {

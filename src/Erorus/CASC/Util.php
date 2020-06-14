@@ -30,7 +30,7 @@ class Util {
     }
 
     /**
-     * @param string $host     A hostname.
+     * @param string $host     A hostname, or a URL prefix with protocol, host, and path.
      * @param string $cdnPath  A product-specific path component from the versionConfig where we get these assets.
      * @param string $pathType "config" or "data", typically "data".
      * @param string $hash     A hex-encoded hash of the file you're trying to fetch.
@@ -42,8 +42,12 @@ class Util {
             throw new \Exception("Invalid hash format: expected lowercase hex!");
         }
 
+        if (strpos($host, '://') === false) {
+            $host = "http://{$host}/";
+        }
+
         return sprintf(
-            'http://%s/%s/%s/%s/%s/%s',
+            '%s%s/%s/%s/%s/%s',
             $host,
             $cdnPath,
             $pathType,

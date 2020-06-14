@@ -2,16 +2,20 @@
 
 namespace Erorus\CASC;
 
+use Iterator;
+
 abstract class VersionConfig {
     const MAX_CACHE_AGE = 3600; // 1 hour
 
     private $region;
     private $program;
 
-    /** @var \Iterator CDN hostnames. */
-    private $hosts = [];
     private $cdnPath = '';
     private $configPath = '';
+    /** @var Iterator CDN hostnames. */
+    private $hosts = [];
+    /** @var Iterator CDN hosts with protocols. */
+    private $servers = [];
 
     private $buildConfig = '';
     private $cdnConfig = '';
@@ -41,6 +45,14 @@ abstract class VersionConfig {
         }
 
         return $this->hosts;
+    }
+
+    public function getServers(): Iterator {
+        if (!$this->servers) {
+            $this->getCDNs();
+        }
+
+        return $this->servers;
     }
 
     public function getCDNPath() {
@@ -142,6 +154,28 @@ abstract class VersionConfig {
             }
             if (isset($row['hosts'])) {
                 $this->hosts = new HostList(explode(' ', $row['hosts']));
+            }
+            if (isset($row['servers'])) {
+                $servers = [];
+                foreach (explode(' ', $row['servers']) as $url) {
+                    // Strip off the querystring, which seems to be metadata packed into the URL instead of necessary.
+                    if (($pos = strpos($url, '?')) !== false) {
+                        $url = substr($url, 0, $pos);
+                    }
+                    // Make sure we always end in a slash, so we can append paths easier.
+                    if (substr($url, -1) !== '/') {
+                        $url .= '/';
+                    }
+
+                    $servers[] = $url;
+                };
+                $this->servers = new HostList($servers);
+            } elseif (isset($row['hosts'])) {
+                $servers = [];
+                foreach (explode(' ', $row['hosts']) as $host) {
+                    $servers[] = "http://{$host}/";
+                }
+                $this->servers = new HostList($servers);
             }
             if (isset($row['configpath'])) {
                 $this->configPath = $row['configpath'];

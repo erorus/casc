@@ -30,27 +30,30 @@ class Encoding {
      * Fetches and parses the encoding file to map content hashes to encoding hashes.
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
-     * @param \Iterator $hosts Typically a HostList, or an array. CDN hostnames.
+     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, \Iterator $hosts, string $cdnPath, string $hash) {
+    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, string $hash) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
         if (is_null($f)) {
-            foreach ($hosts as $host) {
+            foreach ($servers as $server) {
                 $f = $cache->getWriteHandle($cachePath, true);
                 if (is_null($f)) {
                     throw new \Exception("Cannot create cache location for encoding data\n");
                 }
 
-                $url = Util::buildTACTUrl($host, $cdnPath, 'data', $hash);
+                $url = Util::buildTACTUrl($server, $cdnPath, 'data', $hash);
                 try {
                     $success = HTTP::get($url, $f);
                 } catch (BLTE\Exception $e) {
+                    $success = false;
+                } catch (\Exception $e) {
+                    echo " - " . $e->getMessage();
                     $success = false;
                 }
                 if (!$success) {

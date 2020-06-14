@@ -18,16 +18,25 @@ class TACT extends DataSource {
 
     private $hashMapCache = [];
 
-    private $hosts;
+    private $servers;
     private $cdnPath;
 
     const LOCATION_NONE = 0;
     const LOCATION_CACHE = 1;
     const LOCATION_WOW = 2;
 
-    public function __construct(Cache $cache, $hosts, $cdnPath, $hashes, $wowPath = null) {
-        $this->cache = $cache;
-        $this->hosts = $hosts;
+    /**
+     * @param Cache $cache A disk cache where we can find and store raw files we download.
+     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
+     * @param string[] $hashes The hex hash strings for the files to read.
+     * @param string|null $wowPath The filesystem path to the WoW install.
+     *
+     * @throws \Exception
+     */
+    public function __construct(Cache $cache, $servers, $cdnPath, $hashes, $wowPath = null) {
+        $this->cache   = $cache;
+        $this->servers = $servers;
         $this->cdnPath = $cdnPath;
 
         if (!is_null($wowPath)) {
@@ -252,15 +261,20 @@ class TACT extends DataSource {
         $oldProgressOutput = HTTP::$writeProgressToStream;
         HTTP::$writeProgressToStream = null;
         $success = false;
-        foreach ($this->hosts as $host) {
-            $url = Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash) . '.index';
+        foreach ($this->servers as $server) {
+            $url = Util::buildTACTUrl($server, $this->cdnPath, 'data', $hash) . '.index';
 
             $f = $this->cache->getWriteHandle($cachePath);
             if (is_null($f)) {
                 throw new \Exception("Cannot create write handle for index file at $cachePath\n");
             }
 
-            $success = HTTP::get($url, $f);
+            try {
+                $success = HTTP::get($url, $f);
+            } catch (\Exception $e) {
+                echo " - " . $e->getMessage() . "\n";
+                $success = false;
+            }
 
             fclose($f);
 
@@ -294,8 +308,8 @@ class TACT extends DataSource {
      */
     private function findHashOnCDN(string $hash): ?TACTLocation {
         $hash = bin2hex($hash);
-        foreach ($this->hosts as $host) {
-            $headers = HTTP::head(Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash));
+        foreach ($this->servers as $server) {
+            $headers = HTTP::head(Util::buildTACTUrl($server, $this->cdnPath, 'data', $hash));
             if ($headers['responseCode'] === 200) {
                 return new TACTLocation(['archive' => $hash]);
             }
@@ -322,8 +336,8 @@ class TACT extends DataSource {
         }
 
         $hash = $locationInfo->archive;
-        foreach ($this->hosts as $host) {
-            $url = Util::buildTACTUrl($host, $this->cdnPath, 'data', $hash);
+        foreach ($this->servers as $server) {
+            $url = Util::buildTACTUrl($server, $this->cdnPath, 'data', $hash);
 
             $writePath = 'blte://' . $destPath;
             $writeHandle = fopen($writePath, 'wb');
@@ -337,6 +351,9 @@ class TACT extends DataSource {
                 $success = HTTP::get($url, $writeHandle, $range);
             } catch (BLTE\Exception $e) {
                 $success = false;
+            } catch (\Exception $e) {
+                $success = false;
+                echo " - " . $e->getMessage();
             }
 
             fclose($writeHandle);
