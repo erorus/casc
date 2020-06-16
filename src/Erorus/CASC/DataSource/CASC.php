@@ -6,6 +6,9 @@ use Erorus\CASC\DataSource;
 use Erorus\CASC\DataSource\Location\CASC as CASCLocation;
 use Erorus\CASC\Util;
 
+/**
+ * This extracts data from the WoW install on the local filesystem.
+ */
 class CASC extends DataSource {
     /** @var array[] Various info read from the header of each valid index file.  */
     private $indexHeaders = [];
