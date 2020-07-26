@@ -41,9 +41,7 @@ This was designed specifically to extract data for World of Warcraft. Parts of i
 
 ## Development Status
 
-This tool is still in development, though most of the basic stuff is complete. It should be able to extract most files from both local and remote CASC sources.
-
-Command line options and default functionality may change in later versions.
+This tool is considered complete. It should be able to extract most files from both local and remote CASC sources.
 
 Features that are not planned to be supported:
 * Patch archives (unnecessary since we aren't going to patch old files)
@@ -61,6 +59,8 @@ World of Warcraft, Warcraft, Battle.net and Blizzard Entertainment are trademark
 I could not have done this without the documentation at [the WoWDev wiki](https://wowdev.wiki/CASC). Thanks to those who contribute there!
 
 Some BLTE processing details (especially for encrypted blocks) came from [the CASCExplorer project](https://github.com/WoW-Tools/CASCExplorer).
+
+[![Become a Patron!](https://everynothing.net/patronButton.png)](https://www.patreon.com/bePatron?u=4445407)
 
 ## License
 
