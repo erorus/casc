@@ -98,7 +98,7 @@ class Encrypted extends Chunk {
             }
             if (strlen($this->keyName) < $this->keyNameLength) {
                 $length = min(strlen($buffer), $this->keyNameLength - strlen($this->keyName));
-                $this->keyName = substr($buffer, 0, $length);
+                $this->keyName .= substr($buffer, 0, $length);
                 $buffer = substr($buffer, $length);
                 continue;
             }
@@ -110,7 +110,7 @@ class Encrypted extends Chunk {
             }
             if (strlen($this->iv) < $this->ivLength) {
                 $length = min(strlen($buffer), $this->ivLength - strlen($this->iv));
-                $this->iv = substr($buffer, 0, $length);
+                $this->iv .= substr($buffer, 0, $length);
                 $buffer = substr($buffer, $length);
                 continue;
             }
