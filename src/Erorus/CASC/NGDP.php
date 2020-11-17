@@ -204,6 +204,7 @@ class NGDP {
         echo "Loading encryption keys..";
         try {
             $added = $this->fetchTactKey();
+            $added += $this->downloadTactKeys();
             echo sprintf(" OK (+%d)\n", $added);
         } catch (\Exception $e) {
             echo " Failed: ", $e->getMessage(), "\n";
@@ -235,6 +236,35 @@ class NGDP {
         }
 
         return $this->fetchContentHash($contentHash, $destPath);
+    }
+
+    /**
+     * Downloads the community tact key list and adds their keys to our list of known encryption keys.
+     *
+     * @return int How many keys we added.
+     */
+    private function downloadTactKeys(): int {
+        $keys = [];
+        try {
+            $list = HTTP::get('https://raw.githubusercontent.com/wowdev/TACTKeys/master/WoW.txt');
+        } catch (\Exception $e) {
+            echo $e->getMessage(), "\n";
+
+            return 0;
+        }
+
+        $lines = explode("\n", $list);
+        foreach ($lines as $line) {
+            if (preg_match('/([0-9A-F]{16})\s+([0-9A-F]{32})/i', $line, $match)) {
+                $keys[strrev(hex2bin($match[1]))] = hex2bin($match[2]);
+            }
+        }
+
+        if ($keys) {
+            BLTE::loadEncryptionKeys($keys);
+        }
+
+        return count($keys);
     }
 
     /**
