@@ -100,8 +100,6 @@ abstract class VersionConfig {
      * @return Iterator A list of CDN URL prefixes, e.g. ["http://cdn.example.com/"]
      */
     public function getServers(): Iterator {
-        $this->servers = new HostList([]);
-
         if (!$this->servers) {
             $this->getCDNs();
         }
