@@ -97,7 +97,15 @@ class NGDP {
         }
         echo "\n";
 
-        // Step 2: Downloading the encoding map, using the hash from the build config.
+        // Step 2: Find the indexes available in the CASC archive for the local WoW install, if available.
+
+        if ($wowPath) {
+            echo "Loading local indexes..";
+            $this->dataSources['Local'] = new CASC($wowPath);
+            echo "\n";
+        }
+
+        // Step 3: Downloading the encoding map, using the hash from the build config.
         // The second encoding hash (index 1) is the BLTE-encoded version, which is pretty reliably on the CDN.
         // The first encoding hash (index 0) would be for the decoded version, which often 404s.
 
@@ -107,6 +115,7 @@ class NGDP {
             try {
                 $this->encoding = new Encoding(
                     $this->cache,
+                    $this->dataSources,
                     $versionConfig->getServers(),
                     $versionConfig->getCDNPath(),
                     $buildConfig->encoding[1],
@@ -120,6 +129,7 @@ class NGDP {
         if (is_null($this->encoding)) {
             $this->encoding = new Encoding(
                 $this->cache,
+                $this->dataSources,
                 $versionConfig->getServers(),
                 $versionConfig->getCDNPath(),
                 $buildConfig->encoding[0],
@@ -128,7 +138,7 @@ class NGDP {
         }
         echo "\n";
 
-        // Step 3: Downloading the Install name source, allowing us to look up the content hash for it in Encoding.
+        // Step 4: Downloading the Install name source, allowing us to look up the content hash for it in Encoding.
         // Like before, the second hash is the BLTE-encoded version, which is what ends up on the CDN. We can look it
         // up from Encoding if it's not already present in the build config.
 
@@ -143,13 +153,14 @@ class NGDP {
         }
         $this->nameSources['Install'] = new Install(
             $this->cache,
+            $this->dataSources,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
             $installContentHashHex
         );
         echo "\n";
 
-        // Step 4: Downloading the Root name source, getting the encoded content hash from Encoding.
+        // Step 5: Downloading the Root name source, getting the encoded content hash from Encoding.
 
         echo "Loading root..";
         $rootContentHashHex = $buildConfig->root[1] ?? null;
@@ -162,6 +173,7 @@ class NGDP {
         }
         $this->nameSources['Root'] = new Root(
             $this->cache,
+            $this->dataSources,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
             $rootContentHashHex,
@@ -169,7 +181,7 @@ class NGDP {
         );
         echo "\n";
 
-        // Step 5: Downloading the CDN config, which lists all the TACT archives on the CDN.
+        // Step 6: Downloading the CDN config, which lists all the TACT archives on the CDN.
 
         echo "Loading CDN config..";
         $cdnConfig = new Config(
@@ -180,14 +192,6 @@ class NGDP {
             $versionConfig->getCDNConfig()
         );
         echo "\n";
-
-        // Step 6: Find the indexes available in the CASC archive for the local WoW install, if available.
-
-        if ($wowPath) {
-            echo "Loading local indexes..";
-            $this->dataSources['Local'] = new CASC($wowPath);
-            echo "\n";
-        }
 
         // Step 7: Initialize the TACT data source, feeding it a list of all the CDN archives and local WoW archives.
 

@@ -4,6 +4,7 @@ namespace Erorus\CASC\Manifest;
 
 use Erorus\CASC\BLTE;
 use Erorus\CASC\Cache;
+use Erorus\CASC\DataSource;
 use Erorus\CASC\HTTP;
 use Erorus\CASC\Manifest;
 use Erorus\CASC\Util;
@@ -78,6 +79,7 @@ class Root extends Manifest {
      * Initializes our Root manifest by fetching (and caching) a single Root data file for this version.
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
+     * @param DataSource[] $dataSources
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
@@ -87,6 +89,7 @@ class Root extends Manifest {
      */
     public function __construct(
         Cache $cache,
+        array $dataSources,
         \Iterator $servers,
         string $cdnPath,
         string $hash,
@@ -101,6 +104,20 @@ class Root extends Manifest {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
+        if (is_null($f)) {
+            foreach ($dataSources as $dataSource) {
+                $loc = $dataSource->findHashInIndexes(hex2bin($hash));
+                if ($loc) {
+                    $fullCachePath = $cache->getFullPath($cachePath);
+                    if ($dataSource->extractFile($loc, $fullCachePath)) {
+                        $f = $cache->getReadHandle($cachePath);
+                        break;
+                    } else if (file_exists($fullCachePath)) {
+                        unlink($fullCachePath);
+                    }
+                }
+            }
+        }
         if (is_null($f)) {
             foreach ($servers as $server) {
                 $f = $cache->getWriteHandle($cachePath, true);

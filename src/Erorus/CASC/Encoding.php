@@ -30,6 +30,7 @@ class Encoding {
      * Fetches and parses the encoding file to map content hashes to encoding hashes.
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
+     * @param DataSource[] $dataSources
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
@@ -37,10 +38,24 @@ class Encoding {
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, string $hash, bool $isBLTE) {
+    public function __construct(Cache $cache, array $dataSources, \Iterator $servers, string $cdnPath, string $hash, bool $isBLTE) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
+        if (is_null($f)) {
+            foreach ($dataSources as $dataSource) {
+                $loc = $dataSource->findHashInIndexes(hex2bin($hash));
+                if ($loc) {
+                    $fullCachePath = $cache->getFullPath($cachePath);
+                    if ($dataSource->extractFile($loc, $fullCachePath)) {
+                        $f = $cache->getReadHandle($cachePath);
+                        break;
+                    } else if (file_exists($fullCachePath)) {
+                        unlink($fullCachePath);
+                    }
+                }
+            }
+        }
         if (is_null($f)) {
             foreach ($servers as $server) {
                 $f = $cache->getWriteHandle($cachePath, $isBLTE);
