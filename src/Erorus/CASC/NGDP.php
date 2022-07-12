@@ -83,6 +83,7 @@ class NGDP {
             $this->cache,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
+            $wowPath,
             $versionConfig->getBuildConfig()
         );
         if (!isset($buildConfig->encoding[1])) {
@@ -175,6 +176,7 @@ class NGDP {
             $this->cache,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
+            $wowPath,
             $versionConfig->getCDNConfig()
         );
         echo "\n";

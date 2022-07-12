@@ -14,14 +14,25 @@ class Config {
      * @param Cache $cache A disk cache where we can find and store raw configs we download.
      * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets
+     * @param string|null $wowPath A filesystem path to a WoW install which we can use as a data source.
      * @param string $hash The hex hash string for the file to read.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, string $hash) {
-        $cachePath = 'config/' . $hash;
+    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, ?string $wowPath, string $hash) {
+        $data = null;
+        if ($wowPath) {
+            $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);
+            $configPath = "{$wowPath}/Data/config/" . substr($hash, 0, 2) . '/' . substr($hash, 2, 2) . "/{$hash}";
+            if (file_exists($configPath)) {
+                $data = file_get_contents($configPath);
+            }
+        }
 
-        $data = $cache->read($cachePath);
+        $cachePath = 'config/' . $hash;
+        if (is_null($data)) {
+            $data = $cache->read($cachePath);
+        }
         if (is_null($data)) {
             // Fetch it and cache it.
             foreach ($servers as $server) {
