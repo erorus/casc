@@ -22,6 +22,8 @@ Clone this repo, and run `composer install` to get the requirements.
 -r, --region   Optional. Region. (us, eu, cn, tw, kr) [default: us]
 -l, --locale   Optional. Locale. [default: enUS]
 
+--no-check-certificate  Optional. Ignores SSL certificate issues when connecting to HTTPS hosts.
+
 -h, --help     This help message.
 ```
 

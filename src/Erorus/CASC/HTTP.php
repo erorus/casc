@@ -45,6 +45,9 @@ class HTTP {
     /** @var string The URL we're currently downloading. */
     private static $url = '';
 
+    /** @var bool True when curl verifies SSL certs, false to ignore bad certs. */
+    private static $verifyCert = true;
+
     /**
      * Avoids reusing any currently-open connections to hosts on future requests. Returns the hostnames for which we
      * would have attempted to reuse connections.
@@ -95,6 +98,8 @@ class HTTP {
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_FRESH_CONNECT  => static::needsNewConnection($url),
             CURLOPT_SSLVERSION     => 6, //CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_SSL_VERIFYPEER => static::$verifyCert,
+            CURLOPT_SSL_VERIFYHOST => static::$verifyCert ? 2 : 0,
             CURLOPT_CONNECTTIMEOUT => 6,
             CURLOPT_ENCODING       => 'gzip',
             CURLOPT_LOW_SPEED_LIMIT => 50 * 1024,
@@ -197,6 +202,8 @@ class HTTP {
             CURLOPT_NOBODY         => true,
             CURLOPT_FRESH_CONNECT  => static::needsNewConnection($url),
             CURLOPT_SSLVERSION     => 6, //CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_SSL_VERIFYPEER => static::$verifyCert,
+            CURLOPT_SSL_VERIFYHOST => static::$verifyCert ? 2 : 0,
             CURLOPT_TIMEOUT        => PHP_SAPI == 'cli' ? 30 : 8,
             CURLOPT_CONNECTTIMEOUT => 6,
         ]);
@@ -240,6 +247,15 @@ class HTTP {
         $outHeaders = array_merge(['responseCode' => $responseCode], $headers);
 
         return $outHeaders;
+    }
+
+    /**
+     * Sets whether we verify SSL certs.
+     *
+     * @param bool $verify
+     */
+    public static function setCertVerification(bool $verify): void {
+        static::$verifyCert = $verify;
     }
 
     /**

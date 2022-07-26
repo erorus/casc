@@ -33,7 +33,18 @@ function main()
     $listfile = '';
 
     $shortOpts = 'o:c:p:r:l:f:w:hi';
-    $longOpts = ['out:','cache:','program:','region:','locale:','files:','wow:', 'help', 'ignore'];
+    $longOpts = [
+        'out:',
+        'cache:',
+        'program:',
+        'region:',
+        'locale:',
+        'files:',
+        'wow:',
+        'help',
+        'ignore',
+        'no-check-certificate',
+    ];
 
     $opts = getopt($shortOpts, $longOpts);
     foreach ($opts as $k => $v) {
@@ -73,6 +84,9 @@ function main()
             case 'f':
             case 'files':
                 $listfile = $v;
+                break;
+            case 'no-check-certificate':
+                CASC\HTTP::setCertVerification(false);
                 break;
         }
     }
@@ -187,6 +201,8 @@ Usage:
 -r, --region   Optional. Region. (us, eu, cn, tw, kr) [default: us]
 -l, --locale   Optional. Locale. ($locales) [default: enUS]
 -i, --ignore   Optional. Ignore extraction errors (useful to keep partially encrypted files)
+
+--no-check-certificate  Optional. Ignores SSL certificate issues when connecting to HTTPS hosts.
 
 -h, --help     This help message.
 
