@@ -40,17 +40,23 @@ abstract class DataSource {
      * @return bool Success
      */
     public function extractFile(Location $locationInfo, string $destPath, ?string $contentHash = null): bool {
-        $success = $this->fetchFile($locationInfo, $destPath);
+        $destDir = dirname($destPath);
+        $tempPath = tempnam($destDir, 'casc-temp-');
 
-        $success = $success && file_exists($destPath);
-        $success = $success && filesize($destPath) > 0;
-        $success = $success && (is_null($contentHash) || ($contentHash === md5_file($destPath, true)));
+        $fetchSuccess = $this->fetchFile($locationInfo, $tempPath);
 
-        if (!$success && !self::$ignoreErrors) {
-            unlink($destPath);
+        $hasData = file_exists($tempPath) && filesize($tempPath) > 0;
+        $fullSuccess = $fetchSuccess && $hasData &&
+            (is_null($contentHash) || ($contentHash === md5_file($tempPath, true)));
+
+        if ($fullSuccess || (self::$ignoreErrors && $hasData)) {
+            rename($tempPath, $destPath);
+            chmod($destPath, 0644);
+        } else if (file_exists($tempPath)) {
+            unlink($tempPath);
         }
 
-        return $success;
+        return $fullSuccess;
     }
 
     /**
