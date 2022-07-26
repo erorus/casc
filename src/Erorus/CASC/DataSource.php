@@ -40,6 +40,7 @@ abstract class DataSource {
      * @return bool Success
      */
     public function extractFile(Location $locationInfo, string $destPath, ?string $contentHash = null): bool {
+        Util::assertParentDir($destPath, 'output');
         $destDir = dirname($destPath);
         $tempPath = tempnam($destDir, 'casc-temp-');
 
