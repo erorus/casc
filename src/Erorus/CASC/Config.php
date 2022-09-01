@@ -12,14 +12,14 @@ class Config {
 
     /**
      * @param Cache $cache A disk cache where we can find and store raw configs we download.
-     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param iterable $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets
      * @param string|null $wowPath A filesystem path to a WoW install which we can use as a data source.
      * @param string $hash The hex hash string for the file to read.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, \Iterator $servers, string $cdnPath, ?string $wowPath, string $hash) {
+    public function __construct(Cache $cache, iterable $servers, string $cdnPath, ?string $wowPath, string $hash) {
         $data = null;
         if ($wowPath) {
             $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);

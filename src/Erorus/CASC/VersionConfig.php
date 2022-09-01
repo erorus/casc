@@ -2,8 +2,6 @@
 
 namespace Erorus\CASC;
 
-use Iterator;
-
 /**
  * Fetches and manages CDN and version configuration data obtained from Ribbit (or legacy HTTP).
  */
@@ -27,10 +25,10 @@ abstract class VersionConfig {
     /** @var string The path prefix component used when fetching assets from the CDN. */
     private $cdnPath = '';
 
-    /** @var Iterator CDN hostnames. */
+    /** @var iterable CDN hostnames. */
     private $hosts = [];
 
-    /** @var Iterator CDN hosts with protocols. */
+    /** @var iterable CDN hosts with protocols. */
     private $servers = [];
 
     /**** Version Config Values ****/
@@ -86,9 +84,9 @@ abstract class VersionConfig {
     }
 
     /**
-     * @return Iterator A list of CDN hostnames.
+     * @return iterable A list of CDN hostnames.
      */
-    public function getHosts(): Iterator {
+    public function getHosts(): iterable {
         if (!$this->hosts) {
             $this->getCDNs();
         }
@@ -97,9 +95,9 @@ abstract class VersionConfig {
     }
 
     /**
-     * @return Iterator A list of CDN URL prefixes, e.g. ["http://cdn.example.com/"]
+     * @return iterable A list of CDN URL prefixes, e.g. ["http://cdn.example.com/"]
      */
-    public function getServers(): Iterator {
+    public function getServers(): iterable {
         if (!$this->servers) {
             $this->getCDNs();
         }

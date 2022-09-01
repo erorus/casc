@@ -23,13 +23,13 @@ class Install extends Manifest {
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
      * @param DataSource[] $dataSources
-     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param iterable $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, array $dataSources, \Iterator $servers, string $cdnPath, string $hash) {
+    public function __construct(Cache $cache, array $dataSources, iterable $servers, string $cdnPath, string $hash) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);

@@ -31,14 +31,14 @@ class Encoding {
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
      * @param DataSource[] $dataSources
-     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param iterable $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
      * @param bool $isBLTE Whether the file identified by $hash is BLTE-encoded.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, array $dataSources, \Iterator $servers, string $cdnPath, string $hash, bool $isBLTE) {
+    public function __construct(Cache $cache, array $dataSources, iterable $servers, string $cdnPath, string $hash, bool $isBLTE) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);

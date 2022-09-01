@@ -36,7 +36,7 @@ class TACT extends DataSource {
     /** @var array[] Keyed by hex hash strings as index names, the first key in each block of each index.  */
     private $hashMapCache = [];
 
-    /** @var \Iterator The CDN host list. */
+    /** @var iterable The CDN host list. */
     private $servers;
 
     /**
@@ -44,7 +44,7 @@ class TACT extends DataSource {
      * it and assigns locations to the available indexes for later use.
      *
      * @param Cache $cache A disk cache where we can find and store raw files we download.
-     * @param \Iterator $servers Typically a HostList, or an array. CDN hostnames.
+     * @param iterable $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string[] $hashes The hex hash strings for the files to read.
      * @param string|null $wowPath The filesystem path to the WoW install.
@@ -53,7 +53,7 @@ class TACT extends DataSource {
      */
     public function __construct(
         Cache $cache,
-        \Iterator $servers,
+        iterable $servers,
         string $cdnPath,
         array $hashes,
         ?string $wowPath = null
