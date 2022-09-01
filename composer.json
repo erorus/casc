@@ -22,7 +22,6 @@
         }
     },
     "require": {
-        "php-64bit": "^7.2",
         "ext-curl": "*",
         "ext-zlib": "*",
         "erorus/db2": "*",

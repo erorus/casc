@@ -38,9 +38,7 @@ class Ribbit extends VersionConfig {
             fwrite($handle, $command);
 
             $parser = new MailMimeParser();
-            $message = $parser->parse($handle);
-
-            fclose($handle);
+            $message = $parser->parse($handle, true);
 
             /** @var MessagePart[] $attachments */
             $attachments = $message->getAllAttachmentParts();
