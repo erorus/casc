@@ -43,9 +43,6 @@ class Root extends Manifest {
     /** @var int The length of content hashes: 16 bytes (md5 hash result). */
     private const CONTENT_HASH_LENGTH = 16;
 
-    /** @var int How long the header of the root file is, before the first block of data. */
-    private const FILE_HEADER_LENGTH = 12;
-
     /** @var int The length of file IDs. */
     private const FILE_ID_LENGTH = 4;
 
@@ -71,6 +68,9 @@ class Root extends Manifest {
 
     /** @var int The size of the root file, in bytes. */
     private $fileSize;
+
+    /** @var int The size of the file header, in bytes. */
+    private $headerLength = 0;
 
     /** @var bool Whether this root file uses a legacy (pre 8.2) format with interleaved name hashes. */
     private $useOldRecordFormat = false;
@@ -158,7 +158,14 @@ class Root extends Manifest {
             $this->allowNonNamedFiles = false;
             $this->useOldRecordFormat = true;
         } else {
-            [$countTotal, $countWithNameHash] = array_values(unpack('l*', fread($this->fileHandle, 8)));
+            [$this->headerLength, $version] = array_values(unpack('l*', fread($this->fileHandle, 8)));
+            if ($version === 1) {
+                [$countTotal, $countWithNameHash] = array_values(unpack('l*', fread($this->fileHandle, 8)));
+            } else {
+                $countTotal = $this->headerLength;
+                $countWithNameHash = $version;
+                $this->headerLength = 12;
+            }
             $this->allowNonNamedFiles = $countTotal !== $countWithNameHash;
             $this->useOldRecordFormat = false;
         }
@@ -188,7 +195,7 @@ class Root extends Manifest {
 
         $hashedName = static::jenkins_hashlittle2(strtoupper(str_replace('/', '\\', $nameOrId)));
 
-        fseek($this->fileHandle, $this->useOldRecordFormat ? 0 : self::FILE_HEADER_LENGTH);
+        fseek($this->fileHandle, $this->headerLength);
 
         $blockId = -1;
         while (ftell($this->fileHandle) < $this->fileSize) {
