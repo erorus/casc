@@ -75,6 +75,9 @@ class Root extends Manifest {
     /** @var bool Whether this root file uses a legacy (pre 8.2) format with interleaved name hashes. */
     private $useOldRecordFormat = false;
 
+    /** @var int The version of root file. */
+    private $version;
+
     /**
      * Initializes our Root manifest by fetching (and caching) a single Root data file for this version.
      *
@@ -157,14 +160,21 @@ class Root extends Manifest {
         if ($sig !== 'TSFM') {
             $this->allowNonNamedFiles = false;
             $this->useOldRecordFormat = true;
+            $this->version = 0;
         } else {
-            [$this->headerLength, $version] = array_values(unpack('l*', fread($this->fileHandle, 8)));
-            if ($version === 1) {
-                [$countTotal, $countWithNameHash] = array_values(unpack('l*', fread($this->fileHandle, 8)));
-            } else {
-                $countTotal = $this->headerLength;
-                $countWithNameHash = $version;
-                $this->headerLength = 12;
+            [$this->headerLength, $this->version] = array_values(unpack('l*', fread($this->fileHandle, 8)));
+            switch ($this->version) {
+                case 1:
+                case 2:
+                    [$countTotal, $countWithNameHash] = array_values(unpack('l*', fread($this->fileHandle, 8)));
+                    break;
+
+                default:
+                    $countTotal         = $this->headerLength;
+                    $countWithNameHash  = $this->version;
+                    $this->headerLength = 12;
+                    $this->version      = 0;
+                    break;
             }
             $this->allowNonNamedFiles = $countTotal !== $countWithNameHash;
             $this->useOldRecordFormat = false;
@@ -202,7 +212,17 @@ class Root extends Manifest {
             $blockId++;
 
             // Read the block header.
-            [$numRec, $flags, $blockLocale] = array_values(unpack('lnumrec/Vflags/Vlocale', fread($this->fileHandle, 12)));
+            if ($this->version < 2) {
+                [$numRec, $flags, $blockLocale] =
+                    array_values(unpack('lnumrec/Vflags/Vlocale', fread($this->fileHandle, 12)));
+            } else {
+                [$numRec, $blockLocale, $flags1, $flags2, $flags3] =
+                    array_values(unpack(
+                        'lnumrec/Vlocale/Vflags1/Vflags2/Cflags3',
+                        fread($this->fileHandle, 17)
+                    ));
+                $flags = $flags1 | $flags2 | ($flags3 << 17);
+            }
 
             $blockHasNameHashes = !($this->allowNonNamedFiles && ($flags & self::FLAG_NO_NAME_HASH));
 
