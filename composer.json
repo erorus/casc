@@ -24,7 +24,6 @@
     "require": {
         "ext-curl": "*",
         "ext-zlib": "*",
-        "erorus/db2": "*",
-        "zbateson/mail-mime-parser": "dev-master"
+        "erorus/db2": "*"
     }
 }
