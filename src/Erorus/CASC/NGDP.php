@@ -208,13 +208,16 @@ class NGDP {
         // Step 8: Try to download and parse WoW's TACT key DB2 file, so we're up-to-date on all the encryption keys.
 
         echo "Loading encryption keys..";
+        $ignoringErrors = DataSource::ignoreErrors();
+        DataSource::ignoreErrors(true);
         try {
-            $added = $this->fetchTactKey();
-            $added += $this->downloadTactKeys();
+            $added = $this->downloadTactKeys();
+            $added += $this->fetchTactKey();
             echo sprintf(" OK (+%d)\n", $added);
         } catch (\Exception $e) {
             echo " Failed: ", $e->getMessage(), "\n";
         }
+        DataSource::ignoreErrors($ignoringErrors);
 
         // We're finally ready to extract things.
     }
