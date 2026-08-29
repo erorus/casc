@@ -6,7 +6,6 @@ use Erorus\CASC\DataSource\CASC;
 use Erorus\CASC\DataSource\TACT;
 use Erorus\CASC\Manifest\Install;
 use Erorus\CASC\Manifest\Root;
-use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
 use Erorus\CASC\VersionConfig\Ribbit;
 use Erorus\DB2\Reader;
 
@@ -58,12 +57,7 @@ class NGDP {
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
         echo "Loading version config..";
-        $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
-        $ribbit = new Ribbit($this->cache, $program, $region);
-        if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
-            // We prefer Ribbit results, as long as it has at least as many hostnames.
-            $versionConfig = $ribbit;
-        }
+        $versionConfig = new Ribbit($this->cache, $program, $region);
 
         if (!count($versionConfig->getHosts())) {
             throw new \Exception(sprintf("No hosts from NGDP for program '%s' region '%s'\n", $program, $region));
