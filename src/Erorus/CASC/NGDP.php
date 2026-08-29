@@ -7,6 +7,8 @@ use Erorus\CASC\DataSource\TACT;
 use Erorus\CASC\Manifest\Install;
 use Erorus\CASC\Manifest\Root;
 use Erorus\CASC\VersionConfig\Ribbit;
+use Erorus\CASC\VersionConfig\TACTChannels;
+use Erorus\CASC\VersionConfig\VersionConfig;
 use Erorus\DB2\Reader;
 
 /**
@@ -57,14 +59,24 @@ class NGDP {
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
         echo "Loading version config..";
-        $versionConfig = new Ribbit($this->cache, $program, $region);
+        $ribbitConfig = new Ribbit($this->cache, $program, $region);
+        $channelsConfig = new TACTChannels($this->cache, $program, $region);
 
+        if (version_compare($channelsConfig->getVersion(), $ribbitConfig->getVersion()) === 1) {
+            echo " Channels";
+            $versionConfig = $channelsConfig;
+        } else {
+            echo " Ribbit";
+            $versionConfig = $ribbitConfig;
+        }
+
+        /** @var VersionConfig $versionConfig */
         if (!count($versionConfig->getHosts())) {
-            throw new \Exception(sprintf("No hosts from NGDP for program '%s' region '%s'\n", $program, $region));
+            throw new \Exception(sprintf("No hosts for program '%s' region '%s'\n", $program, $region));
         }
 
         echo sprintf(
-            " %s %s version %s\n",
+            ": %s %s version %s\n",
             $versionConfig->getRegion(),
             $versionConfig->getProgram(),
             $versionConfig->getVersion()

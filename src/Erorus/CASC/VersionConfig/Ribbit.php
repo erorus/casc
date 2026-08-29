@@ -6,7 +6,8 @@ use Erorus\CASC\Cache;
 use Erorus\CASC\HostList;
 use Erorus\CASC\HTTP;
 
-class Ribbit {
+class Ribbit implements VersionConfig
+{
     private const URL_PREFIX = 'https://us.version.battle.net/v2';
 
     /** @var int To protect against querying Ribbit unnecessarily, we cache the responses and consider them fresh
