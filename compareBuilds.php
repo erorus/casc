@@ -92,6 +92,27 @@ function main()
         return 1;
     }
 
+    $stats = getStats($cachePath, $program, $region, $locale, $newVersionsPath, $oldVersionsPath);
+
+    fwrite(STDOUT, json_encode($stats, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+
+    $httpStats = CASC\HTTP::getStats();
+    echo sprintf("%d remote connection%s made for %d remote request%s\n",
+        $httpStats['connections'], $httpStats['connections'] == 1 ? '' : 's',
+        $httpStats['requests'], $httpStats['requests'] == 1 ? '' : 's');
+    echo 'Peak memory usage: ' . number_format(memory_get_peak_usage() / 1048576) . "MB\n";
+
+    return 0;
+}
+
+function getStats(
+    string $cachePath,
+    string $program,
+    string $region,
+    string $locale,
+    string $newVersionsPath,
+    string $oldVersionsPath,
+) {
     $cachePath = rtrim($cachePath, DIRECTORY_SEPARATOR);
 
     $cache = new CASC\Cache($cachePath);
@@ -145,13 +166,7 @@ function main()
 
     echo "\n";
 
-    $httpStats = CASC\HTTP::getStats();
-    echo sprintf("%d remote connection%s made for %d remote request%s\n",
-        $httpStats['connections'], $httpStats['connections'] == 1 ? '' : 's',
-        $httpStats['requests'], $httpStats['requests'] == 1 ? '' : 's');
-    echo 'Peak memory usage: ' . number_format(memory_get_peak_usage() / 1048576) . "MB\n";
-
-    fwrite(STDOUT, json_encode([
+    return [
         'locale' => $locale,
         'prior' => [
             'product' => $oldVersions->getProgram(),
@@ -175,9 +190,7 @@ function main()
             'changedFiles' => $changed['count'],
             'changedBytes' => $changed['bytes'],
         ],
-    ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
-
-    return 0;
+    ];
 }
 
 function printHelp($cachePath) {
