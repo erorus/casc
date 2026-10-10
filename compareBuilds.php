@@ -99,11 +99,11 @@ function main()
     $cache = new CASC\Cache($cachePath);
     try {
         $versions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
-        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
+        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, $versions);
         $newContentHashes = $newNgdp->getContentHashes();
 
         $versions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program, $region);
-        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
+        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, $versions);
         $oldContentHashes = $oldNgdp->getContentHashes();
     } catch (\Exception $e) {
         echo $e->getMessage(), "\n";

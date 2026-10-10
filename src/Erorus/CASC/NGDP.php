@@ -44,6 +44,7 @@ class NGDP {
         string $program = 'wow',
         string $region = 'us',
         string $locale = 'enUS',
+        bool $loadEncryptionKeys = true,
         ?VersionConfig $versionConfig = null,
     ) {
         if (PHP_INT_MAX < 8589934590) {
@@ -59,10 +60,8 @@ class NGDP {
 
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
-        $loadEncryptionKeys = false;
         echo "Loading version config..";
         if ($versionConfig === null) {
-            $loadEncryptionKeys = true;
             $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
             $ribbit = new Ribbit($this->cache, $program, $region);
             if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
