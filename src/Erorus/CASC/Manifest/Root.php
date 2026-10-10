@@ -332,6 +332,18 @@ class Root extends Manifest {
         return null;
     }
 
+    public function getContentHashes(): array {
+        $this->getContentHash('-----');
+
+        $result = [];
+        foreach ($this->blockCache as [$fileDataIds, $nameHashes]) {
+            $result += $fileDataIds;
+            $result += $nameHashes;
+        }
+
+        return $result;
+    }
+
     /**
      * Hashes some text with an algorithm used by Blizzard to hash file names.
      *

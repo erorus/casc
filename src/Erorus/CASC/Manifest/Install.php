@@ -113,4 +113,8 @@ class Install extends Manifest {
     public function getContentHash(string $name, ?string $locale = null): ?string {
         return $this->hashes[strtolower($name)] ?? null;
     }
+
+    public function getContentHashes(): array {
+        return $this->hashes;
+    }
 }

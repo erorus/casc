@@ -42,7 +42,8 @@ class NGDP {
         ?string $wowPath = null,
         string $program = 'wow',
         string $region = 'us',
-        string $locale = 'enUS'
+        string $locale = 'enUS',
+        ?VersionConfig $versionConfig = null,
     ) {
         if (PHP_INT_MAX < 8589934590) {
             throw new \Exception("Requires 64-bit PHP");
@@ -58,11 +59,13 @@ class NGDP {
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
         echo "Loading version config..";
-        $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
-        $ribbit = new Ribbit($this->cache, $program, $region);
-        if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
-            // We prefer Ribbit results, as long as it has at least as many hostnames.
-            $versionConfig = $ribbit;
+        if ($versionConfig === null) {
+            $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
+            $ribbit = new Ribbit($this->cache, $program, $region);
+            if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
+                // We prefer Ribbit results, as long as it has at least as many hostnames.
+                $versionConfig = $ribbit;
+            }
         }
 
         if (!count($versionConfig->getHosts())) {
@@ -245,6 +248,20 @@ class NGDP {
         }
 
         return $this->fetchContentHash($contentHash, $destPath);
+    }
+
+    /**
+     * Returns a map of $nameOrId => content hash, in binary bytes (not hex).
+     *
+     * @return array<string, string>
+     */
+    public function getContentHashes(): array {
+        $result = [];
+        foreach ($this->nameSources as $nameSource) {
+            $result += $nameSource->getContentHashes();
+        }
+
+        return $result;
     }
 
     /**
