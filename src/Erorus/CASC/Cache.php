@@ -141,7 +141,7 @@ class Cache {
      */
     public function read(string $path): ?string {
         $fullPath = $this->getFullPath($path);
-        if (file_exists($fullPath)) {
+        if (is_readable($fullPath) && is_file($fullPath)) {
             $data = file_get_contents($fullPath);
 
             return ($data === false) ? null : $data;

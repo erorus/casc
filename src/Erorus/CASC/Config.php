@@ -20,6 +20,10 @@ class Config {
      * @throws \Exception
      */
     public function __construct(Cache $cache, iterable $servers, string $cdnPath, ?string $wowPath, string $hash) {
+        if ($hash === '') {
+            throw new \Exception('No config hash provided');
+        }
+
         $data = null;
         if ($wowPath) {
             $wowPath = rtrim($wowPath, DIRECTORY_SEPARATOR);

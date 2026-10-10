@@ -138,11 +138,11 @@ function main()
     echo sprintf(
         "%s (%sMB) added\n%s (%sMB) changed\n%s (%sMB) removed\n",
         number_format($added['count']),
-        number_format($added['bytes'] / 1048576),
+        number_format(ceil($added['bytes'] / 1048576)),
         number_format($changed['count']),
-        number_format($changed['bytes'] / 1048576),
+        number_format(ceil($changed['bytes'] / 1048576)),
         number_format($removed['count']),
-        number_format($removed['bytes'] / 1048576),
+        number_format(ceil($removed['bytes'] / 1048576)),
     );
 
     echo "\n";
