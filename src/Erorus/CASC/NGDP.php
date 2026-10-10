@@ -4,6 +4,7 @@ namespace Erorus\CASC;
 
 use Erorus\CASC\DataSource\CASC;
 use Erorus\CASC\DataSource\TACT;
+use Erorus\CASC\Encoding\ContentMap;
 use Erorus\CASC\Manifest\Install;
 use Erorus\CASC\Manifest\Root;
 use Erorus\CASC\VersionConfig\HTTP as HTTPVersionConfig;
@@ -58,8 +59,10 @@ class NGDP {
 
         // Step 0: Download the latest version config, for CDN hostnames and pointers to this version's other configs.
 
+        $loadEncryptionKeys = false;
         echo "Loading version config..";
         if ($versionConfig === null) {
+            $loadEncryptionKeys = true;
             $versionConfig = new HTTPVersionConfig($this->cache, $program, $region);
             $ribbit = new Ribbit($this->cache, $program, $region);
             if (count($ribbit->getHosts()) >= count($versionConfig->getHosts())) {
@@ -210,17 +213,19 @@ class NGDP {
 
         // Step 8: Try to download and parse WoW's TACT key DB2 file, so we're up-to-date on all the encryption keys.
 
-        echo "Loading encryption keys..";
-        $ignoringErrors = DataSource::ignoreErrors();
-        DataSource::ignoreErrors(true);
-        try {
-            $added = $this->downloadTactKeys();
-            $added += $this->fetchTactKey();
-            echo sprintf(" OK (+%d)\n", $added);
-        } catch (\Exception $e) {
-            echo " Failed: ", $e->getMessage(), "\n";
+        if ($loadEncryptionKeys) {
+            echo "Loading encryption keys..";
+            $ignoringErrors = DataSource::ignoreErrors();
+            DataSource::ignoreErrors(true);
+            try {
+                $added = $this->downloadTactKeys();
+                $added += $this->fetchTactKey();
+                echo sprintf(" OK (+%d)\n", $added);
+            } catch (\Exception $e) {
+                echo " Failed: ", $e->getMessage(), "\n";
+            }
+            DataSource::ignoreErrors($ignoringErrors);
         }
-        DataSource::ignoreErrors($ignoringErrors);
 
         // We're finally ready to extract things.
     }
@@ -262,6 +267,16 @@ class NGDP {
         }
 
         return $result;
+    }
+
+    /**
+     * Returns metadata about this content hash.
+     *
+     * @param string $contentHash The content hash in binary bytes.
+     * @return ContentMap|null
+     */
+    public function getContentMap(string $contentHash): ?ContentMap {
+        return $this->encoding->getContentMap($contentHash);
     }
 
     /**

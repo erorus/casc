@@ -99,35 +99,51 @@ function main()
     $cache = new CASC\Cache($cachePath);
     try {
         $versions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
-        $ngdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
-        $newContentHashes = $ngdp->getContentHashes();
-        unset($versions, $ngdp);
+        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
+        $newContentHashes = $newNgdp->getContentHashes();
 
         $versions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program, $region);
-        $ngdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
-        $oldContentHashes = $ngdp->getContentHashes();
-        unset($versions, $ngdp);
+        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, $versions);
+        $oldContentHashes = $oldNgdp->getContentHashes();
     } catch (\Exception $e) {
         echo $e->getMessage(), "\n";
         return 1;
     }
-    unset($cache);
+    unset($versions, $cache);
 
-    $added = $changed = $removed = 0;
-    echo sprintf("\n%d old content hashes, %d new content hashes\n", count($oldContentHashes), count($newContentHashes));
+    $added = ['count' => 0, 'bytes' => 0];
+    $changed = ['count' => 0, 'bytes' => 0];
+    $removed = ['count' => 0, 'bytes' => 0];
+
+    echo sprintf(
+        "\n%s old content hashes\n%s new content hashes\n",
+        number_format(count($oldContentHashes)),
+        number_format(count($newContentHashes)),
+    );
     foreach ($oldContentHashes as $key => $hash) {
         if (!isset($newContentHashes[$key])) {
-            $removed++;
+            $removed['count']++;
+            $removed['bytes'] += $oldNgdp->getContentMap($hash)?->getFileSize() ?? 0;
         } elseif ($hash !== $newContentHashes[$key]) {
-            $changed++;
+            $changed['count']++;
+            $changed['bytes'] += $newNgdp->getContentMap($newContentHashes[$key])?->getFileSize() ?? 0;
         }
     }
     foreach ($newContentHashes as $key => $hash) {
         if (!isset($oldContentHashes[$key])) {
-            $added++;
+            $added['count']++;
+            $added['bytes'] += $newNgdp->getContentMap($hash)?->getFileSize() ?? 0;
         }
     }
-    echo sprintf("%d added, %d changed, %d removed\n", $added, $changed, $removed);
+    echo sprintf(
+        "%s (%sMB) added\n%s (%sMB) changed\n%s (%sMB) removed\n",
+        number_format($added['count']),
+        number_format($added['bytes'] / 1048576),
+        number_format($changed['count']),
+        number_format($changed['bytes'] / 1048576),
+        number_format($removed['count']),
+        number_format($removed['bytes'] / 1048576),
+    );
 
     echo "\n";
 
@@ -135,6 +151,7 @@ function main()
     echo sprintf("%d remote connection%s made for %d remote request%s\n",
         $httpStats['connections'], $httpStats['connections'] == 1 ? '' : 's',
         $httpStats['requests'], $httpStats['requests'] == 1 ? '' : 's');
+    echo 'Peak memory usage: ' . number_format(memory_get_peak_usage() / 1048576) . "MB\n";
 
     return 0;
 }
