@@ -35,6 +35,9 @@ class NGDP {
      * @param string $program The TACT product code.
      * @param string $region The region, as defined in the version config column. One of: us, eu, cn, tw, kr
      * @param string $locale The default locale we'll use to fetch assets. A key in Manifest\Root::LOCALE_FLAGS
+     * @param bool $loadEncryptionKeys Whether to download encryption keys from the community key list and DB2s.
+     * @param resource|null $httpProgressStream Where to write HTTP progress, Defaults to STDOUT.
+     * @param VersionConfig|null $versionConfig A substitute version config object, instead of fetching online.
      *
      * @throws \Exception
      */
@@ -45,6 +48,7 @@ class NGDP {
         string $region = 'us',
         string $locale = 'enUS',
         bool $loadEncryptionKeys = true,
+        $httpProgressStream = STDOUT,
         ?VersionConfig $versionConfig = null,
     ) {
         if (PHP_INT_MAX < 8589934590) {
@@ -54,7 +58,7 @@ class NGDP {
             stream_wrapper_register('blte', BLTE::class);
         }
 
-        HTTP::$writeProgressToStream = STDOUT;
+        HTTP::$writeProgressToStream = $httpProgressStream;
 
         $this->cache = new Cache($cachePath);
 

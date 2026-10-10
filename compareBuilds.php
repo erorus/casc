@@ -94,22 +94,20 @@ function main()
 
     $cachePath = rtrim($cachePath, DIRECTORY_SEPARATOR);
 
-    echo "Cache dir: $cachePath\n";
-
     $cache = new CASC\Cache($cachePath);
     try {
-        $versions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
-        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, $versions);
+        $newVersions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
+        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $newVersions);
         $newContentHashes = $newNgdp->getContentHashes();
 
-        $versions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program, $region);
-        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, $versions);
+        $oldVersions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program, $region);
+        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $oldVersions);
         $oldContentHashes = $oldNgdp->getContentHashes();
     } catch (\Exception $e) {
         echo $e->getMessage(), "\n";
         return 1;
     }
-    unset($versions, $cache);
+    unset($cache);
 
     $added = ['count' => 0, 'bytes' => 0];
     $changed = ['count' => 0, 'bytes' => 0];
@@ -153,6 +151,32 @@ function main()
         $httpStats['requests'], $httpStats['requests'] == 1 ? '' : 's');
     echo 'Peak memory usage: ' . number_format(memory_get_peak_usage() / 1048576) . "MB\n";
 
+    fwrite(STDOUT, json_encode([
+        'locale' => $locale,
+        'prior' => [
+            'product' => $oldVersions->getProgram(),
+            'region' => $oldVersions->getRegion(),
+            'version' => $oldVersions->getVersion(),
+            'buildConfig' => $oldVersions->getBuildConfig(),
+            'contentHashCount' => count($oldContentHashes),
+        ],
+        'current' => [
+            'product' => $newVersions->getProgram(),
+            'region' => $newVersions->getRegion(),
+            'version' => $newVersions->getVersion(),
+            'buildConfig' => $newVersions->getBuildConfig(),
+            'contentHashCount' => count($newContentHashes),
+        ],
+        'stats' => [
+            'addedFiles' => $added['count'],
+            'addedBytes' => $added['bytes'],
+            'removedFiles' => $removed['count'],
+            'removedBytes' => $removed['bytes'],
+            'changedFiles' => $changed['count'],
+            'changedBytes' => $changed['bytes'],
+        ],
+    ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+
     return 0;
 }
 
@@ -187,4 +211,11 @@ EOF;
 
 }
 
-exit(main());
+ob_start(static function (string $chunk): string {
+    fwrite(STDERR, $chunk);
+    return '';
+}, 1);
+$retCode = main();
+ob_end_flush();
+
+exit($retCode);
