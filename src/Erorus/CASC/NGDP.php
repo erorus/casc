@@ -27,6 +27,12 @@ class NGDP {
     /** @var Manifest[] Where we convert file names and IDs into content hashes. Step 1/3. */
     private $nameSources = [];
 
+    private VersionConfig $versionConfig;
+    private Config $buildConfig;
+
+    /** @var Patch|null The patch manifest object, load on demand. */
+    private $patch = null;
+
     /**
      * NGDP constructor.
      *
@@ -36,6 +42,7 @@ class NGDP {
      * @param string $region The region, as defined in the version config column. One of: us, eu, cn, tw, kr
      * @param string $locale The default locale we'll use to fetch assets. A key in Manifest\Root::LOCALE_FLAGS
      * @param bool $loadEncryptionKeys Whether to download encryption keys from the community key list and DB2s.
+     * @param bool $singleArchitecture Whether to restrict manifests to a single common architecture.
      * @param resource|null $httpProgressStream Where to write HTTP progress, Defaults to STDOUT.
      * @param VersionConfig|null $versionConfig A substitute version config object, instead of fetching online.
      *
@@ -48,6 +55,7 @@ class NGDP {
         string $region = 'us',
         string $locale = 'enUS',
         bool $loadEncryptionKeys = true,
+        bool $singleArchitecture = false,
         $httpProgressStream = STDOUT,
         ?VersionConfig $versionConfig = null,
     ) {
@@ -84,6 +92,7 @@ class NGDP {
             $versionConfig->getProgram(),
             $versionConfig->getVersion()
         );
+        $this->versionConfig = $versionConfig;
 
         // Step 1: Download the build config, using the servers and file hash from version config.
 
@@ -105,6 +114,7 @@ class NGDP {
             throw new \Exception("Could not find install value in build config\n");
         }
         echo "\n";
+        $this->buildConfig = $buildConfig;
 
         // Step 2: Find the indexes available in the CASC archive for the local WoW install, if available.
 
@@ -165,7 +175,9 @@ class NGDP {
             $this->dataSources,
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
-            $installContentHashHex
+            $installContentHashHex,
+            $locale,
+            $singleArchitecture,
         );
         echo "\n";
 
@@ -186,7 +198,8 @@ class NGDP {
             $versionConfig->getServers(),
             $versionConfig->getCDNPath(),
             $rootContentHashHex,
-            $locale
+            $locale,
+            $singleArchitecture,
         );
         echo "\n";
 
@@ -280,6 +293,31 @@ class NGDP {
      */
     public function getContentMap(string $contentHash): ?ContentMap {
         return $this->encoding->getContentMap($contentHash);
+    }
+
+    /**
+     * Returns how many bytes are in the patch file for the target content hash.
+     *
+     * @param string $targetContentHash The content hash (in binary) we want to end up with after the patch.
+     * @param ?string $sourceEncodingHash The encoding hash (in binary) of the file we're patching.
+     * @return int|null
+     */
+    public function getPatchSize(string $targetContentHash, ?string $sourceEncodingHash): ?int {
+        if (!$this->patch) {
+            $patchHash = $this->buildConfig->patch[0] ?? null;
+            if (!$patchHash) {
+                return null;
+            }
+            $this->patch = new Patch(
+                $this->cache,
+                $this->dataSources,
+                $this->versionConfig->getServers(),
+                $this->versionConfig->getCDNPath(),
+                $patchHash,
+            );
+        }
+
+        return $this->patch->getPatchSize($targetContentHash, $sourceEncodingHash);
     }
 
     /**

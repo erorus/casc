@@ -26,10 +26,20 @@ class Install extends Manifest {
      * @param iterable $servers Typically a HostList, or an array. CDN hostnames.
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
+     * @param string|null $locale e.g. "enUS". Null for all locales.
+     * @param bool $singleArchitecture Whether to restrict files to a single common system architecture.
      *
      * @throws \Exception
      */
-    public function __construct(Cache $cache, array $dataSources, iterable $servers, string $cdnPath, string $hash) {
+    public function __construct(
+        Cache $cache,
+        array $dataSources,
+        iterable $servers,
+        string $cdnPath,
+        string $hash,
+        ?string $locale = null,
+        bool $singleArchitecture = false,
+    ) {
         $cachePath = 'data/' . $hash;
 
         $f = $cache->getReadHandle($cachePath);
@@ -84,9 +94,22 @@ class Install extends Manifest {
         }
         $header = unpack('Cunk/ChashSize/ntags/Nentries', fread($f, 8));
 
+        $tags = [];
         for ($x = 0; $x < $header['tags']; $x++) {
             $name = stream_get_line($f, 8192, "\0");
-            fseek($f, 2 + ceil($header['entries'] / 8), SEEK_CUR);
+            $type = unpack('n', fread($f, 2))[1];
+            $bits = fread($f, ceil($header['entries'] / 8));
+            foreach (unpack('C*', $bits) as $index => $byte) {
+                if ($byte === 0) {
+                    continue;
+                }
+                for ($bit = 0; $bit < 8; $bit++) {
+                    if ($byte & (1 << (7 - $bit))) {
+                        $entryIndex = ($index - 1) * 8 + $bit;
+                        $tags[$name][$entryIndex] = true;
+                    }
+                }
+            }
         }
 
         for ($x = 0; $x < $header['entries']; $x++) {
@@ -95,6 +118,13 @@ class Install extends Manifest {
 
             // Skip the file size.
             fseek($f, 4, SEEK_CUR);
+
+            if ($locale && isset($tags[$locale]) && !isset($tags[$locale][$x])) {
+                continue;
+            }
+            if ($singleArchitecture && !isset($tags['Windows'][$x], $tags['x86_64'][$x])) {
+                continue;
+            }
 
             $this->hashes[strtolower($name)] = $hash;
         }

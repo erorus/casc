@@ -119,11 +119,11 @@ function getStats(
     try {
         $newVersions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
         $region = $newVersions->getRegion();
-        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $newVersions);
+        $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, true, null, $newVersions);
         $newContentHashes = $newNgdp->getContentHashes();
 
         $oldVersions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program);
-        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $oldVersions);
+        $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, true, null, $oldVersions);
         $oldContentHashes = $oldNgdp->getContentHashes();
     } catch (\Exception $e) {
         echo $e->getMessage(), "\n";
@@ -134,33 +134,57 @@ function getStats(
     $added = ['count' => 0, 'bytes' => 0];
     $changed = ['count' => 0, 'bytes' => 0];
     $removed = ['count' => 0, 'bytes' => 0];
+    $patched = 0;
 
     echo sprintf(
         "\n%s old content hashes\n%s new content hashes\n",
         number_format(count($oldContentHashes)),
         number_format(count($newContentHashes)),
     );
+
+    $accounted = [];
     foreach ($oldContentHashes as $key => $hash) {
         if (!isset($newContentHashes[$key])) {
-            $removed['count']++;
-            $removed['bytes'] += $oldNgdp->getContentMap($hash)?->getFileSize() ?? 0;
+            if (!isset($accounted[$hash])) {
+                $accounted[$hash] = true;
+
+                $removed['count']++;
+                $removed['bytes'] += $oldNgdp->getContentMap($hash)?->getFileSize() ?? 0;
+            }
         } elseif ($hash !== $newContentHashes[$key]) {
-            $changed['count']++;
-            $changed['bytes'] += $newNgdp->getContentMap($newContentHashes[$key])?->getFileSize() ?? 0;
+            if (!isset($accounted[$hash])) {
+                $accounted[$hash] = true;
+
+                $oldEncodingKeys = $oldNgdp->getContentMap($hash)?->getEncodedHashes() ?? [];
+                $size = null;
+                foreach ($oldEncodingKeys as $oldEncodingKey) {
+                    $size ??= $newNgdp->getPatchSize($newContentHashes[$key], $oldEncodingKey);
+                    if ($size !== null) {
+                        $patched++;
+                        break;
+                    }
+                }
+                $changed['count']++;
+                $changed['bytes'] += $size ?? $newNgdp->getContentMap($newContentHashes[$key])?->getFileSize() ?? 0;
+            }
         }
+        unset($newContentHashes[$key]);
     }
     foreach ($newContentHashes as $key => $hash) {
-        if (!isset($oldContentHashes[$key])) {
+        if (!isset($oldContentHashes[$key]) && !isset($accounted[$hash])) {
+            $accounted[$hash] = true;
+
             $added['count']++;
             $added['bytes'] += $newNgdp->getContentMap($hash)?->getFileSize() ?? 0;
         }
     }
     echo sprintf(
-        "%s (%sMB) added\n%s (%sMB) changed\n%s (%sMB) removed\n",
+        "%s (%sMB) added\n%s (%sMB) changed\n%s patched\n%s (%sMB) removed\n",
         number_format($added['count']),
         number_format(ceil($added['bytes'] / 1048576)),
         number_format($changed['count']),
         number_format(ceil($changed['bytes'] / 1048576)),
+        number_format($patched),
         number_format($removed['count']),
         number_format(ceil($removed['bytes'] / 1048576)),
     );
@@ -174,14 +198,12 @@ function getStats(
             'region' => $oldVersions->getRegion(),
             'version' => $oldVersions->getVersion(),
             'buildConfig' => $oldVersions->getBuildConfig(),
-            'contentHashCount' => count($oldContentHashes),
         ],
         'current' => [
             'product' => $newVersions->getProgram(),
             'region' => $newVersions->getRegion(),
             'version' => $newVersions->getVersion(),
             'buildConfig' => $newVersions->getBuildConfig(),
-            'contentHashCount' => count($newContentHashes),
         ],
         'stats' => [
             'addedFiles' => $added['count'],

@@ -72,6 +72,9 @@ class Root extends Manifest {
     /** @var int The size of the file header, in bytes. */
     private $headerLength = 0;
 
+    /** @var bool Whether to restrict files to a single common system architecture. */
+    private $singleArchitecture = false;
+
     /** @var bool Whether this root file uses a legacy (pre 8.2) format with interleaved name hashes. */
     private $useOldRecordFormat = false;
 
@@ -87,6 +90,7 @@ class Root extends Manifest {
      * @param string $cdnPath A product-specific path component from the versionConfig where we get these assets.
      * @param string $hash The hex hash string for the file to read.
      * @param string $defaultLocale One of the keys in self::LOCALE_FLAGS.
+     * @param bool $singleArchitecture Whether to restrict files to a single common system architecture.
      *
      * @throws \Exception
      */
@@ -96,13 +100,15 @@ class Root extends Manifest {
         iterable $servers,
         string $cdnPath,
         string $hash,
-        string $defaultLocale = 'enUS'
+        string $defaultLocale = 'enUS',
+        bool $singleArchitecture = false,
     ) {
         if (!key_exists($defaultLocale, static::LOCALE_FLAGS)) {
             throw new \Exception("Locale $defaultLocale is not supported\n");
         }
 
         $this->defaultLocale = $defaultLocale;
+        $this->singleArchitecture = $singleArchitecture;
 
         $cachePath = 'data/' . $hash;
 
@@ -232,8 +238,8 @@ class Root extends Manifest {
                 $blockDataLength += $numRec * self::NAME_HASH_LENGTH;
             }
 
-            if (($blockLocale & $locale) !== $locale) {
-                // This block doesn't support the locale we're using. Skip it.
+            if (($blockLocale & $locale) !== $locale || ($this->singleArchitecture && (($flags & 0x130) !== 0))) {
+                // This block doesn't support the locale/architecture we're using. Skip it.
                 fseek($this->fileHandle, $blockDataLength, SEEK_CUR);
                 continue;
             }
