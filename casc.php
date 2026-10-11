@@ -17,7 +17,7 @@ function getHomeDir() {
         // that doesn't happen.
         $home = rtrim($home, '\\/');
     }
-    return empty($home) ? false : $home;
+    return empty($home) ? null : $home;
 }
 
 function main()

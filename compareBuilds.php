@@ -17,7 +17,7 @@ function getHomeDir() {
         // that doesn't happen.
         $home = rtrim($home, '\\/');
     }
-    return empty($home) ? false : $home;
+    return empty($home) ? null : $home;
 }
 
 function main()
@@ -26,7 +26,7 @@ function main()
 
     $cachePath = $defaultCachePath = (getHomeDir() ?? __DIR__) . DIRECTORY_SEPARATOR . '.casc-cache';
     $program = 'wow';
-    $region = 'us';
+    $region = null;
     $locale = 'enUS';
     $oldVersionsPath = null;
     $newVersionsPath = null;
@@ -108,7 +108,7 @@ function main()
 function getStats(
     string $cachePath,
     string $program,
-    string $region,
+    ?string $region,
     string $locale,
     string $newVersionsPath,
     string $oldVersionsPath,
@@ -118,10 +118,11 @@ function getStats(
     $cache = new CASC\Cache($cachePath);
     try {
         $newVersions = new CASC\VersionConfig\RibbitVersionsFile($newVersionsPath, $cache, $program, $region);
+        $region = $newVersions->getRegion();
         $newNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $newVersions);
         $newContentHashes = $newNgdp->getContentHashes();
 
-        $oldVersions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program, $region);
+        $oldVersions = new CASC\VersionConfig\RibbitVersionsFile($oldVersionsPath, $cache, $program);
         $oldNgdp = new CASC\NGDP($cachePath, null, $program, $region, $locale, false, null, $oldVersions);
         $oldContentHashes = $oldNgdp->getContentHashes();
     } catch (\Exception $e) {

@@ -236,7 +236,7 @@ abstract class VersionConfig {
      *
      * @return array[]
      */
-    private function parseVersionCsv(string $data): array {
+    protected function parseVersionCsv(string $data): array {
         $result = [];
 
         $lines = preg_split('/[\r\n]+/', $data);
