@@ -136,50 +136,89 @@ function getStats(
     $removed = ['count' => 0, 'bytes' => 0];
     $patched = 0;
 
+    $newHashLookup = array_fill_keys(array_values($newContentHashes), true);
+    $oldHashLookup = array_fill_keys(array_values($oldContentHashes), true);
+
     echo sprintf(
-        "\n%s old content hashes\n%s new content hashes\n",
+        "\n%s old names, %s old hashes\n%s new names, %s new hashes\n",
         number_format(count($oldContentHashes)),
+        number_format(count($oldHashLookup)),
         number_format(count($newContentHashes)),
+        number_format(count($newHashLookup)),
     );
 
+    $getSize = static function (CASC\NGDP $ngdp, string $contentHash): int {
+        $contentMap = $ngdp->getContentMap($contentHash);
+        $encodingHashes = $contentMap?->getEncodedHashes() ?? [];
+        foreach ($encodingHashes as $encodingHash) {
+            if ($size = $ngdp->getEncodedSize($encodingHash)) {
+                return $size;
+            }
+        }
+
+        return $contentMap?->getFileSize() ?? 0;
+    };
+
     $accounted = [];
-    foreach ($oldContentHashes as $key => $hash) {
-        if (!isset($newContentHashes[$key])) {
-            if (!isset($accounted[$hash])) {
-                $accounted[$hash] = true;
-
-                $removed['count']++;
-                $removed['bytes'] += $oldNgdp->getContentMap($hash)?->getFileSize() ?? 0;
-            }
-        } elseif ($hash !== $newContentHashes[$key]) {
-            if (!isset($accounted[$hash])) {
-                $accounted[$hash] = true;
-
-                $oldEncodingKeys = $oldNgdp->getContentMap($hash)?->getEncodedHashes() ?? [];
-                $size = null;
-                foreach ($oldEncodingKeys as $oldEncodingKey) {
-                    $size ??= $newNgdp->getPatchSize($newContentHashes[$key], $oldEncodingKey);
-                    if ($size !== null) {
-                        $patched++;
-                        break;
-                    }
-                }
+    foreach ($oldContentHashes as $name => $oldHash) {
+        if ($newHash = $newContentHashes[$name] ?? null) {
+            // Name still exists.
+            if ($oldHash !== $newHash) {
+                // Data changed.
                 $changed['count']++;
-                $changed['bytes'] += $size ?? $newNgdp->getContentMap($newContentHashes[$key])?->getFileSize() ?? 0;
+
+                if (!isset($accounted[$newHash])) {
+                    // We haven't added this hash's bytes yet.
+                    $accounted[$newHash] = true;
+
+                    $oldEncodingKeys = $oldNgdp->getContentMap($oldHash)?->getEncodedHashes() ?? [];
+                    $size = null;
+                    foreach ($oldEncodingKeys as $oldEncodingKey) {
+                        $size = $newNgdp->getPatchSize($newHash, $oldEncodingKey);
+                        if ($size) {
+                            $patched++;
+                            break;
+                        }
+                    }
+
+                    $size ??= $getSize($newNgdp, $newHash);
+
+                    $changed['bytes'] += $size;
+                }
+            } else {
+                // Data is unchanged.
+            }
+        } else {
+            // Name was removed.
+            $removed['count']++;
+            if (!isset($accounted[$oldHash])) {
+                // We haven't accounted for this yet.
+                $accounted[$oldHash] = true;
+                if (!isset($newHashLookup[$oldHash])) {
+                    // This old hash isn't used anywhere else.
+                    $removed['bytes'] += $getSize($oldNgdp, $oldHash);
+                }
             }
         }
-        unset($newContentHashes[$key]);
+        // We don't need to check this name again.
+        unset($newContentHashes[$name]);
     }
-    foreach ($newContentHashes as $key => $hash) {
-        if (!isset($oldContentHashes[$key]) && !isset($accounted[$hash])) {
-            $accounted[$hash] = true;
 
-            $added['count']++;
-            $added['bytes'] += $newNgdp->getContentMap($hash)?->getFileSize() ?? 0;
+    // All the names left in $newContentHashes are not found in $oldContentHashes.
+    foreach ($newContentHashes as $name => $newHash) {
+        $added['count']++;
+        if (!isset($accounted[$newHash])) {
+            // We haven't accounted for this yet.
+            $accounted[$newHash] = true;
+            if (!isset($oldHashLookup[$newHash])) {
+                // This is new content.
+                $added['bytes'] += $getSize($newNgdp, $newHash);
+            }
         }
     }
+
     echo sprintf(
-        "%s (%sMB) added\n%s (%sMB) changed\n%s patched\n%s (%sMB) removed\n",
+        "%s (%sMB) added\n%s (%sMB) changed (%s patched)\n%s (%sMB) removed\n",
         number_format($added['count']),
         number_format(ceil($added['bytes'] / 1048576)),
         number_format($changed['count']),
@@ -236,7 +275,7 @@ Usage:
 
 -c, --cache    Optional. Path for CASC's file cache. [default: $cachePath]
 -p, --program  Optional. The NGDP program code (wow, wow_beta, wowt). [default: wow] 
--r, --region   Optional. Region. (us, eu, cn, tw, kr) [default: us]
+-r, --region   Optional. Region. (us, eu, cn, tw, kr) [default: auto-select]
 -l, --locale   Optional. Locale. ($locales) [default: enUS]
 
 --no-check-certificate  Optional. Ignores SSL certificate issues when connecting to HTTPS hosts.

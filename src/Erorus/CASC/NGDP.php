@@ -321,6 +321,16 @@ class NGDP {
     }
 
     /**
+     * Returns the size of the encoded version of the file with the given encoding hash.
+     *
+     * @param string $encodingHash The encoding hash (in binary)
+     * @return int|null
+     */
+    public function getEncodedSize(string $encodingHash): ?int {
+        return $this->encoding->getEncodedSize($encodingHash);
+    }
+
+    /**
      * Downloads the community tact key list and adds their keys to our list of known encryption keys.
      *
      * @return int How many keys we added.

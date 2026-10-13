@@ -26,6 +26,12 @@ class Encoding {
     /** @var int[] Various fields read from the header of the encoding file. */
     private $header;
 
+    /** @var string[] The first encoding hash in each encoding spec table page. */
+    private $specMap = [];
+
+    /** @var int Where the encoding spec table data starts. */
+    private $specStart;
+
     /**
      * Fetches and parses the encoding file to map content hashes to encoding hashes.
      *
@@ -129,6 +135,26 @@ class Encoding {
             fseek($f, $pageStart + $pageSize);
         }
 
+        // Skip spec table index.
+        $indexEntrySize = $this->header['encodingHashSize'] + self::INDEX_ENTRY_DATA_LENGTH;
+        fseek($f, $indexEntrySize * $this->header['encodingSpecTablePageCount'], SEEK_CUR);
+
+        // Remember where the data starts.
+        $this->specStart = ftell($f);
+
+        // Build our own index. Why don't we use the one we just skipped past? I don't know.
+        $pageSize = $this->header['encodingSpecTableSizeKb'] * 1024;
+        for ($x = 0; $x < $this->header['encodingSpecTablePageCount']; $x++) {
+            // Remember where we started this page.
+            $pageStart = ftell($f);
+
+            // Read the first encoding hash in this (first) entry of the page.
+            $this->specMap[] = fread($f, $this->header['encodingHashSize']);
+
+            // Jump to the start of the next page.
+            fseek($f, $pageStart + $pageSize);
+        }
+
         $this->fileHandle = $f;
     }
 
@@ -147,7 +173,7 @@ class Encoding {
      * @return ContentMap|null
      */
     public function getContentMap(string $contentHash): ?ContentMap {
-        $idx = $this->findInMap($contentHash);
+        $idx = $this->findInMap($this->entryMap, $contentHash);
         if ($idx < 0) {
             return null;
         }
@@ -156,6 +182,36 @@ class Encoding {
         fseek($this->fileHandle, $this->entryStart + $idx * $pageSize);
 
         return $this->findContentMapInPage($contentHash, fread($this->fileHandle, $pageSize));
+    }
+
+    /**
+     * Returns the size of the encoded version of the file with this encoding hash.
+     *
+     * @param string $encodingHash
+     * @return int|null
+     */
+    public function getEncodedSize(string $encodingHash): ?int {
+        $idx = $this->findInMap($this->specMap, $encodingHash);
+        if ($idx < 0) {
+            return null;
+        }
+
+        $pageSize = $this->header['encodingSpecTableSizeKb'] * 1024;
+        fseek($this->fileHandle, $this->specStart + $idx * $pageSize);
+
+        $pageBytes = fread($this->fileHandle, $pageSize);
+        $pos = 0;
+        $hashSize = $this->header['encodingHashSize'];
+        while ($pos < strlen($pageBytes)) {
+            $hash = substr($pageBytes, $pos, $hashSize);
+            $pos += $hashSize + 4;
+            if ($hash === $encodingHash) {
+                return unpack('J', "\0\0\0" . substr($pageBytes, $pos, 5))[1];
+            }
+            $pos += 5;
+        }
+
+        return null;
     }
 
     /**
@@ -211,9 +267,7 @@ class Encoding {
      *
      * @return int
      */
-    private function findInMap(string $needle): int {
-        $map = $this->entryMap;
-
+    private function findInMap(array $map, string $needle): int {
         $lo = 0;
         $hi = count($map) - 1;
 
