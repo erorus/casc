@@ -344,7 +344,7 @@ class Root extends Manifest {
         $result = [];
         foreach ($this->blockCache as [$fileDataIds, $nameHashes]) {
             $result += $fileDataIds;
-            $result += $nameHashes;
+            //$result += $nameHashes; // don't count name hashes, all files will have an id.
         }
 
         return $result;
